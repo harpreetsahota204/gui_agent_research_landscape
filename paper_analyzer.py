@@ -120,8 +120,10 @@ Respond with ONLY the JSON object, no additional text.
                 generated_ids = self.model.generate(
                     **model_inputs,
                     max_new_tokens=32768,          
-                    temperature=0.3,   
+                    temperature=0.6,   
                     top_p=0.9,
+                    top_k=20,
+                    min_p=0,
                     do_sample=True,
                     pad_token_id=self.tokenizer.eos_token_id
                 )
