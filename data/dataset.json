@@ -1,0 +1,333 @@
+[
+    {
+        "Name": "Mind2Web: Towards a Generalist Agent for the Web",
+        "Platform": "Web",
+        "Date": "June 2023",
+        "Paper_Url": "http://arxiv.org/abs/2306.06070v3",
+        "Highlight": "Develops generalist web agents with diverse user interactions on real-world websites",
+        "Code_Url": "https://osu-nlp-group.github.io/Mind2Web/"
+    },
+    {
+        "Name": "WebVLN: Vision-and-Language Navigation on Websites",
+        "Platform": "Web",
+        "Date": "December 2023",
+        "Paper_Url": "http://arxiv.org/abs/2312.15820v1",
+        "Highlight": "Vision-and-language navigation for human-like web browsing",
+        "Code_Url": "https://github.com/WebVLN/WebVLN"
+    },
+    {
+        "Name": "WebLINX: Real-World Website Navigation with Multi-Turn Dialogue",
+        "Platform": "Web",
+        "Date": "February 2024",
+        "Paper_Url": "http://arxiv.org/abs/2402.05930v2",
+        "Highlight": "The first large-scale dataset designed to evaluate agents in real-world conversational web navigation",
+        "Code_Url": "https://mcgill-nlp.github.io/weblinx/"
+    },
+    {
+        "Name": "WebCanvas: Benchmarking Web Agents in Online Environments",
+        "Platform": "Web",
+        "Date": "June 2024",
+        "Paper_Url": "http://arxiv.org/abs/2406.12373v3",
+        "Highlight": "Emphasis on dynamic evaluation using ''key nodes'', which represent critical intermediate states in web tasks.",
+        "Code_Url": "https://huggingface.co/datasets/iMeanAI/Mind2Web-Live"
+    },
+    {
+        "Name": "VGA: Vision GUI Assistant -- Minimizing Hallucinations through Image-Centric Fine-Tuning",
+        "Platform": "Android",
+        "Date": "June 2024",
+        "Paper_Url": "https://arxiv.org/abs/2406.14056",
+        "Highlight": "Prioritizes visual content to reduce inaccuracies",
+        "Code_Url": "https://github.com/Linziyang1999/Vision-GUI-Assistant"
+    },
+    {
+        "Name": "Rico: A Mobile App Dataset for Building Data-Driven Design Applications",
+        "Platform": "Android",
+        "Date": "October 2017",
+        "Paper_Url": "https://doi.org/10.1145/3126594.3126651",
+        "Highlight": "Comprehensive dataset for mobile UI design, interaction modeling, layout generation",
+        "Code_Url": "http://www.interactionmining.org/"
+    },
+    {
+        "Name": "Mapping Natural Language Instructions to Mobile UI Action Sequences",
+        "Platform": "Android",
+        "Date": "May 2020",
+        "Paper_Url": "http://arxiv.org/abs/2005.03776v2",
+        "Highlight": "Pioneering method for grounding natural language instructions to executable mobile UI actions",
+        "Code_Url": "https://github.com/google-research/google-research/tree/master/seq2act"
+    },
+    {
+        "Name": "A Dataset for Interactive Vision-Language Navigation with Unknown Command Feasibility",
+        "Platform": "Android",
+        "Date": "February 2022",
+        "Paper_Url": "http://arxiv.org/abs/2202.02312v3",
+        "Highlight": "Task feasibility prediction for interactive GUI in mobile apps",
+        "Code_Url": "https://github.com/aburns4/MoTIF"
+    },
+    {
+        "Name": "META-GUI: Towards Multi-modal Conversational Agents on Mobile GUI",
+        "Platform": "Android",
+        "Date": "May 2022",
+        "Paper_Url": "http://arxiv.org/abs/2205.11029v2",
+        "Highlight": "Task-oriented dialogue system for mobile GUI without relying on back-end APIs",
+        "Code_Url": "https://x-lance.github.io/META-GU"
+    },
+    {
+        "Name": "Android in the Wild: A Large-Scale Dataset for Android Device Control",
+        "Platform": "Android",
+        "Date": "July 2023",
+        "Paper_Url": "http://arxiv.org/abs/2307.10088v2",
+        "Highlight": "Large-scale dataset for device control research with extensive app and UI diversity",
+        "Code_Url": "https://github.com/google-research/google-research/tree/master/android_in_the_wild"
+    },
+    {
+        "Name": "GUI Odyssey: A Comprehensive Dataset for Cross-App GUI Navigation on Mobile Devices",
+        "Platform": "Android",
+        "Date": "June 2024",
+        "Paper_Url": "http://arxiv.org/abs/2406.08451v1",
+        "Highlight": "Focuses on cross-app navigation tasks on mobile devices",
+        "Code_Url": "https://github.com/OpenGVLab/GUI-Odyssey"
+    },
+    {
+        "Name": "AMEX: Android Multi-annotation Expo Dataset for Mobile GUI Agents",
+        "Platform": "Android",
+        "Date": "July 2024",
+        "Paper_Url": "http://arxiv.org/abs/2407.17490v1",
+        "Highlight": "Multi-level, large-scale annotations supporting complex mobile GUI tasks",
+        "Code_Url": "https://yuxiangchai.github.io/AMEX/"
+    },
+    {
+        "Name": "Ferret-UI: Grounded Mobile UI Understanding with Multimodal LLMs",
+        "Platform": "iOS, Android",
+        "Date": "April 2024",
+        "Paper_Url": "http://arxiv.org/abs/2404.05719v1",
+        "Highlight": "Benchmark for UI-centric tasks with adjustable screen aspect ratios",
+        "Code_Url": "https://github.com/apple/ml-ferret"
+    },
+    {
+        "Name": "Android in the Zoo: Chain-of-Action-Thought for GUI Agents",
+        "Platform": "Android",
+        "Date": "March 2024",
+        "Paper_Url": "http://arxiv.org/abs/2403.02713v2",
+        "Highlight": "Structured \"Chain-of-Action-Thought\" enhancing GUI navigation",
+        "Code_Url": "https://github.com/IMNearth/CoAT"
+    },
+    {
+        "Name": "Octo-planner: On-device Language Model for Planner-Action Agents",
+        "Platform": "Android",
+        "Date": "June 2024",
+        "Paper_Url": "http://arxiv.org/abs/2406.18082v1",
+        "Highlight": "Optimized for task planning with GUI actions",
+        "Code_Url": "https://huggingface.co/NexaAIDev/octopus-planning"
+    },
+    {
+        "Name": "E-ANT: A Large-Scale Dataset for Efficient Automatic GUI NavigaTion",
+        "Platform": "Android tiny-apps",
+        "Date": "June 2024",
+        "Paper_Url": "http://arxiv.org/abs/2406.14250v3",
+        "Highlight": "First large-scale Chinese dataset for GUI navigation with real human interactions",
+        "Code_Url": "/"
+    },
+    {
+        "Name": "MobileVLM: A Vision-Language Model for Better Intra- and Inter-UI Understanding",
+        "Platform": "Android",
+        "Date": "September 2024",
+        "Paper_Url": "http://arxiv.org/abs/2409.14818v2",
+        "Highlight": "Large-scale Chinese mobile GUI dataset with unique navigation graph",
+        "Code_Url": "https://github.com/Meituan-AutoML/MobileVLM"
+    },
+    {
+        "Name": "AndroidLab: Training and Systematic Benchmarking of Android Autonomous Agents",
+        "Platform": "Android",
+        "Date": "October 2024",
+        "Paper_Url": "http://arxiv.org/abs/2410.24024v2",
+        "Highlight": "XML-based interaction data with unified action space",
+        "Code_Url": "https://github.com/THUDM/Android-Lab"
+    },
+    {
+        "Name": "MobileViews: A Large-Scale Mobile GUI Dataset",
+        "Platform": "Android",
+        "Date": "September 2024",
+        "Paper_Url": "http://arxiv.org/abs/2409.14337v2",
+        "Highlight": "Largest open-source mobile screen dataset",
+        "Code_Url": "https://huggingface.co/datasets/mllmTeam/MobileViews"
+    },
+    {
+        "Name": "ScreenAgent: A Vision Language Model-driven Computer Control Agent",
+        "Platform": "Linux, Windows",
+        "Date": "February 2024",
+        "Paper_Url": "http://arxiv.org/abs/2402.07945v1",
+        "Highlight": "VLM-based agent across multiple desktop environments",
+        "Code_Url": "https://github.com/niuzaisheng/ScreenAgent"
+    },
+    {
+        "Name": "VisualAgentBench: Towards Large Multimodal Models as Visual Foundation Agents",
+        "Platform": "Android, Web",
+        "Date": "August 2024",
+        "Paper_Url": "http://arxiv.org/abs/2408.06327v1",
+        "Highlight": "Systematic evaluation of VLM as a visual foundation agent across multiple scenarios",
+        "Code_Url": "https://github.com/THUDM/VisualAgentBench"
+    },
+    {
+        "Name": "GUICourse: From General Vision Language Models to Versatile GUI Agents",
+        "Platform": "Android, Web",
+        "Date": "June 2024",
+        "Paper_Url": "http://arxiv.org/abs/2406.11317v1",
+        "Highlight": "Dataset suite for enhancing VLM GUI navigation on web and mobile platforms",
+        "Code_Url": "https://github.com/yiye3/GUICourse"
+    },
+    {
+        "Name": "GUI-WORLD: A Dataset for GUI-oriented Multimodal LLM-based Agents",
+        "Platform": "Computer, Mobile, Web, XR",
+        "Date": "June 2024",
+        "Paper_Url": "http://arxiv.org/abs/2406.10819v1",
+        "Highlight": "Designed for dynamic, sequential GUI tasks with video data",
+        "Code_Url": "https://gui-world.github.io/"
+    },
+    {
+        "Name": "ScreenAI: A Vision-Language Model for UI and Infographics Understanding",
+        "Platform": "Android, iOS, Computer, Web",
+        "Date": "February 2024",
+        "Paper_Url": "http://arxiv.org/abs/2402.04615v3",
+        "Highlight": "Comprehensive pretraining and fine-tuning for GUI tasks across platforms",
+        "Code_Url": "https://github.com/google-research-datasets/screen_annotation"
+    },
+    {
+        "Name": "OmniParser for Pure Vision Based GUI Agent",
+        "Platform": "Web, Computer, Mobile",
+        "Date": "August 2024",
+        "Paper_Url": "http://arxiv.org/abs/2408.00203v1",
+        "Highlight": "Vision-based parsing of UI screenshots into structured elements",
+        "Code_Url": "https://github.com/microsoft/OmniParser"
+    },
+    {
+        "Name": "Navigating the Digital World as Humans Do: Universal Visual Grounding for GUI Agents",
+        "Platform": "Web, Android",
+        "Date": "October 2024",
+        "Paper_Url": "http://arxiv.org/abs/2410.05243v1",
+        "Highlight": "Largest dataset for GUI visual grounding",
+        "Code_Url": "https://osu-nlp-group.github.io/UGround/"
+    },
+    {
+        "Name": "xLAM: A Family of Large Action Models to Empower AI Agent Systems",
+        "Platform": "Web and tools used",
+        "Date": "September 2024",
+        "Paper_Url": "http://arxiv.org/abs/2409.03215v1",
+        "Highlight": "Provides a unified format across diverse environments, enhancing generalizability and error detection for GUI agents",
+        "Code_Url": "https://github.com/SalesforceAIResearch/xLAM"
+    },
+    {
+        "Name": "AgentTrek: Agent Trajectory Synthesis via Guiding Replay with Web Tutorials",
+        "Platform": "Web",
+        "Date": "December 2024",
+        "Paper_Url": "https://arxiv.org/abs/2412.09605",
+        "Highlight": "VLM agent guided by tutorials, with Playwright capturing the traces & synthesizes high-quality trajectory data by leveraging web tutorials",
+        "Code_Url": ""
+    },
+    {
+        "Name": "Falcon-UI: Understanding GUI Before Following User Instructions",
+        "Platform": "iOS, Android, Windows, Linux, Web",
+        "Date": "December 2024",
+        "Paper_Url": "https://arxiv.org/abs/2412.09362",
+        "Highlight": "Automatic simulations performed by a browser API & instruction-free paradigm and entirely auto-generated",
+        "Code_Url": ""
+    },
+    {
+        "Name": "OS-ATLAS: A Foundation Action Model for Generalist GUI Agents",
+        "Platform": "Websites, Computers, and mobile phones",
+        "Date": "October 2024",
+        "Paper_Url": "http://arxiv.org/abs/2410.23218v1",
+        "Highlight": "Introduces a multi-platform foundation action model, along with a large GUI grounding dataset",
+        "Code_Url": "https://github.com/OS-Copilot/OS-Atlas"
+    },
+    {
+        "Name": "On the Effects of Data Scale on UI Control Agents",
+        "Platform": "Android, Mobile",
+        "Date": "June 2024",
+        "Paper_Url": "https://arxiv.org/abs/2406.03679",
+        "Highlight": "A comprehensive Android app control dataset that includes both high and low-level human-generated instructions",
+        "Code_Url": "https://github.com/google-research/google-research/tree/master/android_control"
+    },
+    {
+        "Name": "OS-Genesis: Automating GUI Agent Trajectory Construction via Reverse Task Synthesis",
+        "Platform": "Android, Web",
+        "Date": "December 2024",
+        "Paper_Url": "https://arxiv.org/abs/2412.19723",
+        "Highlight": "Reverses the conventional task-driven data collection process by enabling exploration-first trajectory synthesis.",
+        "Code_Url": "https://qiushisun.github.io/OS-Genesis-Home/"
+    },
+    {
+        "Name": "GUIDE: Graphical User Interface Data for Execution",
+        "Platform": "Computer and Web",
+        "Date": "April 2024",
+        "Paper_Url": "https://arxiv.org/abs/2404.16048",
+        "Highlight": "Integrates images, action sequences, task descriptions, and spatial grounding into a unified dataset.",
+        "Code_Url": "https://github.com/superagi/GUIDE"
+    },
+    {
+        "Name": "Explorer: Scaling Exploration-driven Web Trajectory Synthesis for Multimodal Web Agents",
+        "Platform": "Web",
+        "Date": "February 2025",
+        "Paper_Url": "https://arxiv.org/abs/2502.11357",
+        "Highlight": "Largest-scale web trajectory dataset to date; dynamically explores web pages to create contextually relevant tasks",
+        "Code_Url": ""
+    },
+    {
+        "Name": "DeskVision: Large Scale Desktop Region Captioning for Advanced GUI Agents",
+        "Platform": "Windows, macOS, and Linux desktops",
+        "Date": "March 2025",
+        "Paper_Url": "https://arxiv.org/abs/2503.11170",
+        "Highlight": "The first large-scale, open-source dataset focusing on real-world desktop GUI scenarios across multiple operating systems.",
+        "Code_Url": ""
+    },
+    {
+        "Name": "FedMABench: Benchmarking Mobile Agents on Decentralized Heterogeneous User Data",
+        "Platform": "Mobile Android",
+        "Date": "March 2025",
+        "Paper_Url": "https://arxiv.org/abs/2503.05143",
+        "Highlight": "The first dataset designed to benchmark federated mobile GUI agents.",
+        "Code_Url": "https://github.com/wwh0411/FedMABench"
+    },
+    {
+        "Name": "Towards Internet-Scale Training For Agents",
+        "Platform": "Web",
+        "Date": "February 2025",
+        "Paper_Url": "https://arxiv.org/abs/2502.06776",
+        "Highlight": "Presents a fully automated three-stage data generation pipeline—task generation, action execution, and evaluation—using only language models without any human annotations.",
+        "Code_Url": "https://data-for-agents.github.io"
+    },
+    {
+        "Name": "GUI-Xplore: Empowering Generalizable GUI Agents with One Exploration",
+        "Platform": "Mobile Android",
+        "Date": "March 2025",
+        "Paper_Url": "https://arxiv.org/abs/2503.17709",
+        "Highlight": "Introduces an exploration-based pretraining paradigm that provides rich app-specific priors through video data.",
+        "Code_Url": "https://github.com/921112343/GUI-Xplore"
+    },
+    {
+        "Name": "Navi-plus: Managing Ambiguous GUI Navigation Tasks with Follow-up",
+        "Platform": "Web and Android",
+        "Date": "March 2025",
+        "Paper_Url": "https://arxiv.org/abs/2503.24180",
+        "Highlight": "Introduces a Self-Correction GUI Navigation task featuring the novel ASK action for recovering missing information.",
+        "Code_Url": ""
+    },
+    {
+        "Name": "Explorer: Robust Collection of Interactable GUI Elements",
+        "Platform": "Web and Android",
+        "Date": "April 2025",
+        "Paper_Url": "https://arxiv.org/abs/2504.09352",
+        "Highlight": "Platform-independent, supports auto-labeling, and enables trace recording and voice-controlled GUI navigation.",
+        "Code_Url": "https://github.com/varnelis/Explorer"
+    },
+    {
+        "Name": "PixelWeb: The First Web GUI Dataset with Pixel-Wise Labels",
+        "Platform": "Web",
+        "Date": "April 2025",
+        "Paper_Url": "https://arxiv.org/abs/2504.16419",
+        "Highlight": "The first GUI dataset to provide pixel-level annotations—including mask and contour—for web UIs, enabling high-precision GUI grounding and detection tasks.",
+        "Code_Url": "https://huggingface.co/datasets/cyberalchemist/PixelWeb"
+    }
+    
+    
+    
+]

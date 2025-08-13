@@ -1,0 +1,469 @@
+[
+    {
+        "Name": "Attention-driven GUI Grounding: Leveraging Pretrained Multimodal Large Language Models without Fine-Tuning",
+        "Platform": "General",
+        "Date": "December 2024",
+        "Paper_Url": "https://arxiv.org/abs/2412.10840",
+        "Highlight": "TAG: a Tuning-free Attention-driven GUI Grounding method for GUI task automation",
+        "Code_Url": "https://github.com/HeimingX/TAG.git"
+    },
+    {
+        "Name": "Agent Q: Advanced Reasoning and Learning for Autonomous AI Agents",
+        "Platform": "Web",
+        "Date": "August 2024",
+        "Paper_Url": "http://arxiv.org/abs/2408.07199v1",
+        "Highlight": "Combines Monte Carlo Tree Search (MCTS) with self-critique mechanisms, leveraging reinforcement learning to achieve exceptional performance",
+        "Code_Url": "https://github.com/sentient-engineering/agent-q"
+    },
+    {
+        "Name": "Search Beyond Queries: Training Smaller Language Models for Web Interactions via Reinforcement Learning",
+        "Platform": "Web",
+        "Date": "April 2024",
+        "Paper_Url": "http://arxiv.org/abs/2404.10887v1",
+        "Highlight": "Efficient use of smaller LLMs, and integration of RL and human demonstrations for robust performance",
+        "Code_Url": "/"
+    },
+    {
+        "Name": "Navigating WebAI: Training Agents to Complete Web Tasks with Large Language Models and Reinforcement Learning",
+        "Platform": "Web",
+        "Date": "May 2024",
+        "Paper_Url": "http://arxiv.org/abs/2405.00516v1",
+        "Highlight": "Combines supervised learning and reinforcement learning to address limitations of previous models in memorization and generalization",
+        "Code_Url": "/"
+    },
+    {
+        "Name": "OpenWebVoyager: Building Multimodal Web Agents via Iterative Real-World Exploration, Feedback and Optimization",
+        "Platform": "Web",
+        "Date": "October 2024",
+        "Paper_Url": "http://arxiv.org/abs/2410.19609v1",
+        "Highlight": "Combining imitation learning with a feedback loop for continuous improvement",
+        "Code_Url": "https://github.com/MinorJerry/OpenWebVoyager"
+    },
+    {
+        "Name": "WebRL: Training LLM Web Agents via Self-Evolving Online Curriculum Reinforcement Learning",
+        "Platform": "Web",
+        "Date": "November 2024",
+        "Paper_Url": "http://arxiv.org/abs/2411.02337v1",
+        "Highlight": "Introduces a self-evolving online curriculum reinforcement learning framework, which dynamically generates tasks based on past failures and adapts to the agent's skill level",
+        "Code_Url": "https://github.com/THUDM/WebRL"
+    },
+    {
+        "Name": "Multimodal Web Navigation with Instruction-Finetuned Foundation Models",
+        "Platform": "Web",
+        "Date": "May 2023",
+        "Paper_Url": "http://arxiv.org/abs/2305.11854v4",
+        "Highlight": "Integrates temporal and local multimodal perception, combining HTML and visual tokens, and uses an instruction-finetuned language model for enhanced reasoning and task generalization",
+        "Code_Url": "https://console.cloud.google.com/storage/browser/gresearch/webllm"
+    },
+    {
+        "Name": "MobileVLM: A Vision-Language Model for Better Intra- and Inter-UI Understanding",
+        "Platform": "Android",
+        "Date": "September 2024",
+        "Paper_Url": "http://arxiv.org/abs/2409.14818v2",
+        "Highlight": "Mobile-specific pretraining tasks that enhance intra- and inter-UI understanding, with a uniquely large and graph-structured Chinese UI dataset (Mobile3M)",
+        "Code_Url": "https://github.com/XiaoMi/mobilevlm"
+    },
+    {
+        "Name": "Octo-planner: On-device Language Model for Planner-Action Agents",
+        "Platform": "Mobile devices",
+        "Date": "June 2024",
+        "Paper_Url": "http://arxiv.org/abs/2406.18082v1",
+        "Highlight": "Optimized for resource-constrained devices to ensure low latency, privacy, and offline functionality",
+        "Code_Url": "https://huggingface.co/NexaAIDev/octopus-planning"
+    },
+    {
+        "Name": "DigiRL: Training In-The-Wild Device-Control Agents with Autonomous Reinforcement Learning",
+        "Platform": "Android",
+        "Date": "June 2024",
+        "Paper_Url": "http://arxiv.org/abs/2406.11896v1",
+        "Highlight": "Offline-to-online reinforcement learning, bridging gaps in static and dynamic environments",
+        "Code_Url": "https://github.com/DigiRL-agent/digirl"
+    },
+    {
+        "Name": "Visual Grounding for User Interfaces",
+        "Platform": "Android",
+        "Date": "June 2024",
+        "Paper_Url": "https://aclanthology.org/2024.naacl-industry.9",
+        "Highlight": "Unifies detection and grounding tasks through layout-guided contrastive learning",
+        "Code_Url": "/"
+    },
+    {
+        "Name": "Ferret-UI: Grounded Mobile UI Understanding with Multimodal LLMs",
+        "Platform": "Android and iPhone platforms",
+        "Date": "April 2024",
+        "Paper_Url": "http://arxiv.org/abs/2404.05719v1",
+        "Highlight": "Multi-platform support with high-resolution adaptive image encoding",
+        "Code_Url": "https://github.com/apple/ml-ferret/tree/main/ferretui"
+    },
+    {
+        "Name": "Octopus: On-device language model for function calling of software APIs",
+        "Platform": "Mobile devices",
+        "Date": "April 2024",
+        "Paper_Url": "http://arxiv.org/abs/2404.01549v1",
+        "Highlight": "Use of conditional masking to enforce correct output formatting",
+        "Code_Url": "/"
+    },
+    {
+        "Name": "Octopus v2: On-device language model for super agent",
+        "Platform": "Edge devices",
+        "Date": "April 2024",
+        "Paper_Url": "http://arxiv.org/abs/2404.01744v5",
+        "Highlight": "Functional tokenization strategy significantly reduces context length required for accurate prediction",
+        "Code_Url": "/"
+    },
+    {
+        "Name": "Octopus v3: Technical Report for On-device Sub-billion Multimodal AI Agent",
+        "Platform": "Edge devices",
+        "Date": "April 2024",
+        "Paper_Url": "http://arxiv.org/abs/2404.11459v2",
+        "Highlight": "Introduction of functional tokens for multimodal applications enhances the model's flexibility",
+        "Code_Url": "/"
+    },
+    {
+        "Name": "Octopus v4: Graph of language models",
+        "Platform": "Serverless cloud-based platforms and edge devices",
+        "Date": "April 2024",
+        "Paper_Url": "http://arxiv.org/abs/2404.19296v1",
+        "Highlight": "Graph-based framework integrating multiple specialized models for optimized performance",
+        "Code_Url": "https://github.com/NexaAI/octopus-v4"
+    },
+    {
+        "Name": "VGA: Vision GUI Assistant -- Minimizing Hallucinations through Image-Centric Fine-Tuning",
+        "Platform": "Android",
+        "Date": "June 2024",
+        "Paper_Url": "https://arxiv.org/abs/2406.14056",
+        "Highlight": "Minimizes hallucinations in GUI comprehension using image-centric fine-tuning approach, balancing text and visual content",
+        "Code_Url": "https://github.com/Linziyang1999/VGA-visual-GUI-assistant"
+    },
+    {
+        "Name": "MobileFlow: A Multimodal LLM For Mobile GUI Agent",
+        "Platform": "Mobile phones",
+        "Date": "July 2024",
+        "Paper_Url": "http://arxiv.org/abs/2407.04346v2",
+        "Highlight": "Hybrid visual encoder with variable-resolution input and Mixture of Experts (MoE) for enhanced performance and efficiency",
+        "Code_Url": "/"
+    },
+    {
+        "Name": "UINav: A Practical Approach to Train On-Device Automation Agents",
+        "Platform": "Android",
+        "Date": "December 2023",
+        "Paper_Url": "http://arxiv.org/abs/2312.10170v4",
+        "Highlight": "Macro action framework and error-driven demonstration collection process enable robust performance with small, efficient models",
+        "Code_Url": "/"
+    },
+    {
+        "Name": "ScreenAgent: A Vision Language Model-driven Computer Control Agent",
+        "Platform": "Linux and Windows Computer",
+        "Date": "February 2024",
+        "Paper_Url": "http://arxiv.org/abs/2402.07945v1",
+        "Highlight": "Comprehensive pipeline of planning, acting, and reflecting to handle real computer screen operations autonomously",
+        "Code_Url": "https://github.com/niuzaisheng/ScreenAgent"
+    },
+    {
+        "Name": "Reinforced UI Instruction Grounding: Towards a Generic UI Task Automation API",
+        "Platform": "Computer",
+        "Date": "October 2023",
+        "Paper_Url": "http://arxiv.org/abs/2310.04716v1",
+        "Highlight": "Incorporates reinforcement learning with environmental feedback for structured and goal-oriented tasks",
+        "Code_Url": "https://choiszt.github.io/Octopus/"
+    },
+    {
+        "Name": "CogAgent: A Visual Language Model for GUI Agents",
+        "Platform": "Mobile and Computer",
+        "Date": "December 2023",
+        "Paper_Url": "http://arxiv.org/abs/2312.08914v2",
+        "Highlight": "Innovatively uses policy gradients to improve spatial decoding in the pixel-to-sequence paradigm",
+        "Code_Url": "https://github.com/THUDM/CogVLM"
+    },
+    {
+        "Name": "SeeClick: Harnessing GUI Grounding for Advanced Visual GUI Agents",
+        "Platform": "PC, web, and Android platforms",
+        "Date": "January 2024",
+        "Paper_Url": "http://arxiv.org/abs/2401.10935v2",
+        "Highlight": "High-resolution cross-module to balance computational efficiency and high-resolution input processing",
+        "Code_Url": "https://github.com/njucckevin/SeeClick"
+    },
+    {
+        "Name": "ScreenAI: A Vision-Language Model for UI and Infographics Understanding",
+        "Platform": "iOS, Android, macOS, Windows, and web",
+        "Date": "February 2024",
+        "Paper_Url": "http://arxiv.org/abs/2402.04615v3",
+        "Highlight": "Ability to perform GUI tasks purely from screenshots and its novel GUI grounding pre-training approach",
+        "Code_Url": "https://github.com/kyegomez/ScreenAI"
+    },
+    {
+        "Name": "Ferret-UI 2: Mastering Universal User Interface Understanding Across Platforms",
+        "Platform": "Mobile, Computer, and tablet UIs",
+        "Date": "October 2024",
+        "Paper_Url": "http://arxiv.org/abs/2410.18967v1",
+        "Highlight": "Unified representation of UIs and infographics, combining visual and textual elements",
+        "Code_Url": "/"
+    },
+    {
+        "Name": "OmniParser for Pure Vision Based GUI Agent",
+        "Platform": "iPhone, Android, iPad, Web, AppleTV",
+        "Date": "August 2024",
+        "Paper_Url": "http://arxiv.org/abs/2408.00203v1",
+        "Highlight": "Multi-platform support with high-resolution adaptive image encoding",
+        "Code_Url": "/"
+    },
+    {
+        "Name": "OmniParser for Pure Vision Based GUI Agent",
+        "Platform": "Mobile, Computer, and Web",
+        "Date": "August 2024",
+        "Paper_Url": "https://arxiv.org/abs/2408.00203",
+        "Highlight": "Introduces a vision-only screen parsing framework, enabling general UI understanding without reliance on external information",
+        "Code_Url": "https://github.com/microsoft/OmniParser"
+    },
+    {
+        "Name": "OS-ATLAS: A Foundation Action Model for Generalist GUI Agents",
+        "Platform": "Websites, Computers, and mobile phones",
+        "Date": "October 2024",
+        "Paper_Url": "http://arxiv.org/abs/2410.23218v1",
+        "Highlight": "Introduces a multi-platform foundation action model, along with a large GUI grounding dataset",
+        "Code_Url": "https://github.com/OS-Copilot/OS-Atlas"
+    },
+    {
+        "Name": "xLAM: A Family of Large Action Models to Empower AI Agent Systems",
+        "Platform": "Windows, macOS, Linux, Android, and the web",
+        "Date": "September 2024",
+        "Paper_Url": "http://arxiv.org/abs/2409.03215v1",
+        "Highlight": "First foundation action model for generalist GUI agents, supporting cross-platform GUI tasks, with a unified action space",
+        "Code_Url": "https://osatlas.github.io/"
+    },
+    {
+        "Name": "Falcon-UI: Understanding GUI Before Following User Instructions",
+        "Platform": "iOS, Android, Windows, Linux, Web",
+        "Date": "December 2024",
+        "Paper_Url": "https://arxiv.org/abs/2412.09362",
+        "Highlight": "Decouples GUI context comprehension from instruction-following tasks, leveraging an instruction-free pretraining approach.",
+        "Code_Url": ""
+    },
+    {
+        "Name": "ShowUI: One Vision-Language-Action Model for GUI Visual Agent",
+        "Platform": "Desktop, Mobile, Web",
+        "Date": "November 2024",
+        "Paper_Url": "https://arxiv.org/abs/2411.17465",
+        "Highlight": "Lightweight Vision-Language-Action (VLA) model supporting both GUI grounding and navigation tasks",
+        "Code_Url": "https://github.com/showlab/ShowUI"
+    },
+    {
+        "Name": "Claude 3.5 Sonnet (Computer Use)",
+        "Platform": "Desktop",
+        "Date": "October 2024",
+        "Paper_Url": "https://www.anthropic.com/news/3-5-models-and-computer-use",
+        "Highlight": "First foundation action model for generalist GUI agents",
+        "Code_Url": ""
+    },
+    {
+        "Name": "OpenAI Operator",
+        "Platform": "Desktop",
+        "Date": "January 2025",
+        "Paper_Url": "https://cdn.openai.com/operator_system_card.pdf",
+        "Highlight": "Supervised learning and reinforcement learning & Trained to use a computer like a human, achieving remarkable performance on benchmarks",
+        "Code_Url": ""
+    },
+    {
+        "Name": "UI-TARS: Pioneering Automated GUI Interaction with Native Agents",
+        "Platform": "Web, Desktop (Windows, macOS), and Mobile (Android)",
+        "Date": "January 2025",
+        "Paper_Url": "https://arxiv.org/abs/2501.12326",
+        "Highlight": "Pure vision-based perception with standardized GUI actions across platforms (Web, Mobile, Desktop).",
+        "Code_Url": "https://github.com/bytedance/UI-TARS"
+    },
+    {
+        "Name": "V-Zen: Efficient GUI Understanding and Precise Grounding With A Novel Multimodal LLM",
+        "Platform": "Computers and Web",
+        "Date": "May 2024",
+        "Paper_Url": "https://arxiv.org/abs/2405.15341",
+        "Highlight": "Dual-resolution visual encoding for precise GUI grounding and task execution.",
+        "Code_Url": "https://github.com/abdur75648/V-Zen"
+    },
+    {
+        "Name": "AppVLM: A Lightweight Vision Language Model for Online App Control",
+        "Platform": "Android",
+        "Date": "February 2025",
+        "Paper_Url": "https://arxiv.org/abs/2502.06395",
+        "Highlight": "A lightweight model that achieves near-GPT-4o performance in Android control tasks while being 10× faster and more resource-efficient.",
+        "Code_Url": ""
+    },
+    {
+        "Name": "RWKV-UI: UI Understanding with Enhanced Perception and Reasoning",
+        "Platform": "Web",
+        "Date": "February 2025",
+        "Paper_Url": "https://arxiv.org/abs/2502.03971",
+        "Highlight": "Introduces a high-resolution three-encoder architecture with visual prompt engineering and CoT reasoning.",
+        "Code_Url": ""
+    },
+    {
+        "Name": "TRISHUL: Towards Region Identification and Screen Hierarchy Understanding for Large VLM based GUI Agents",
+        "Platform": "Web, Desktop, and Mobile platforms ",
+        "Date": "February 2025",
+        "Paper_Url": "https://arxiv.org/abs/2502.08226",
+        "Highlight": "Utilizes hierarchical screen parsing and spatially enhanced element descriptions to enhance LVLMs without additional training.",
+        "Code_Url": ""
+    },
+    {
+        "Name": "Navigating the Digital World as Humans Do: Universal Visual Grounding for GUI Agents",
+        "Platform": "Web, Desktop (Windows, MacOS, Linux), Mobile (Android, iOS)",
+        "Date": "May 2024",
+        "Paper_Url": "https://arxiv.org/abs/2410.05243",
+        "Highlight": "A universal GUI grounding model that relies solely on vision, eliminating the need for text-based representations",
+        "Code_Url": ""
+    },
+    {
+        "Name": "VSC-RL: Advancing Autonomous Vision-Language Agents with Variational Subgoal-Conditioned Reinforcement Learning",
+        "Platform": "Mobile",
+        "Date": "February 2025",
+        "Paper_Url": "https://arxiv.org/abs/2502.07949",
+        "Highlight": "Addresses sparse-reward, long-horizon tasks for RL by autonomously breaking a complicated goal into subgoals",
+        "Code_Url": "https://ai-agents-2030.github.io/VSC-RL"
+    },
+    {
+        "Name": "Magma: A Foundation Model for Multimodal AI Agents",
+        "Platform": "Web, Mobile, Desktop, Robotics",
+        "Date": "February 2025",
+        "Paper_Url": "https://arxiv.org/abs/2502.13130",
+        "Highlight": "Jointly trains on heterogeneous datasets, enabling generalization across digital and physical tasks",
+        "Code_Url": "https://microsoft.github.io/Magma/"
+    },
+    {
+        "Name": "Digi-Q: Learning Q-Value Functions for Training Device-Control Agents",
+        "Platform": "Mobile Android",
+        "Date": "February 2025",
+        "Paper_Url": "https://arxiv.org/abs/2502.15760",
+        "Highlight": "Introduces a VLM-based Q-function for GUI agent training, enabling reinforcement learning without online interactions.",
+        "Code_Url": "https://github.com/DigiRL-agent/digiq"
+    },
+    {
+        "Name": "VEM: Environment-Free Exploration for Training GUI Agent with Value Environment Model",
+        "Platform": "Mobile Android",
+        "Date": "February 2025",
+        "Paper_Url": "https://arxiv.org/abs/2502.18906",
+        "Highlight": "Unlike traditional RL methods that require environment interactions, VEM enables training purely on offline data with a Value Environment Model.",
+        "Code_Url": "https://github.com/microsoft/GUI-Agent-RL"
+    },
+    {
+        "Name": "AutoGUI: Scaling GUI Grounding with Automatic Functionality Annotations from LLMs",
+        "Platform": " Web, Mobile",
+        "Date": "February 2025",
+        "Paper_Url": "https://arxiv.org/abs/2502.01977",
+        "Highlight": "Automatically labels UI elements based on interaction-induced changes, making it scalable and high-quality.",
+        "Code_Url": "https://autogui-project.github.io/"
+    },
+    {
+        "Name": "Smoothing Grounding and Reasoning for MLLM-Powered GUI Agents with Query-Oriented Pivot Tasks",
+        "Platform": "Mobile Android",
+        "Date": "March 2025",
+        "Paper_Url": "https://arxiv.org/abs/2503.00401",
+        "Highlight": "Improves reasoning without requiring large-scale training data.",
+        "Code_Url": "https://github.com/ZrW00/GUIPivot"
+    },
+    {
+        "Name": "WinClick: GUI Grounding with Multimodal Large Language Models",
+        "Platform": "Windows Computer",
+        "Date": "March 2025",
+        "Paper_Url": "https://arxiv.org/abs/2503.04730",
+        "Highlight": "The first GUI grounding model specifically tailored for Windows.",
+        "Code_Url": "https://github.com/zackhuiiiii/WinSpot"
+    },
+    {
+        "Name": "SpiritSight Agent: Advanced GUI Agent with One Look",
+        "Platform": "Web, Android, Windows Desktop",
+        "Date": "March 2025",
+        "Paper_Url": "https://arxiv.org/abs/2503.03196",
+        "Highlight": "Introduces a Universal Block Parsing (UBP) method to resolve positional ambiguity in high-resolution visual inputs.",
+        "Code_Url": "https://hzhiyuan.github.io/SpiritSight-Agent"
+    },
+    {
+        "Name": "Think Twice, Click Once: Enhancing GUI Grounding via Fast and Slow Systems",
+        "Platform": "Web, mobile applications, and desktop",
+        "Date": "March 2025",
+        "Paper_Url": "https://arxiv.org/abs/2503.06470",
+        "Highlight": "A dual-system GUI grounding architecture inspired by human cognition, dynamically switching between fast (intuitive) and slow (analytical) grounding modes based on task complexity.",
+        "Code_Url": "https://github.com/sugarandgugu/Focus"
+    },
+    {
+        "Name": "MP-GUI: Modality Perception with MLLMs for GUI Understanding",
+        "Platform": "Mobile Android",
+        "Date": "March 2025",
+        "Paper_Url": "https://arxiv.org/abs/2503.14021",
+        "Highlight": "Introduces a tri-perceiver architecture that models textual, graphical, and spatial modalities to enhance GUI reasoning.",
+        "Code_Url": "https://github.com/BigTaige/MP-GUI"
+    },
+    {
+        "Name": "UI-R1: Enhancing action prediction of gui agents by reinforcement learning",
+        "Platform": "Mobile Android",
+        "Date": "March 2025",
+        "Paper_Url": "https://arxiv.org/abs/2503.21620",
+        "Highlight": "Introduces a rule-based reinforcement learning approach using GRPO to enhance reasoning and action prediction in GUI tasks with only 136 examples.",
+        "Code_Url": "https://github.com/lll6gg/UI-R1"
+    },
+    {
+        "Name": "GUI-R1: A Generalist R1-Style Vision-Language Action Model For GUI Agents",
+        "Platform": "Windows, Linux, MacOS, Android, and Web",
+        "Date": "April 2025",
+        "Paper_Url": "https://arxiv.org/abs/2504.10458",
+        "Highlight": "First framework to apply rule-based reinforcement learning (RFT) to high-level GUI tasks across platforms.",
+        "Code_Url": "https://github.com/ritzz-ai/GUI-R1.git"
+    },
+    {
+        "Name": "ScreenLLM: Stateful Screen Schema for Efficient Action Understanding and Prediction",
+        "Platform": "Desktop",
+        "Date": "March 2025",
+        "Paper_Url": "https://arxiv.org/abs/2503.20978",
+        "Highlight": "Introduces a novel stateful screen schema to compactly represent GUI interactions over time, enabling fine-grained understanding and accurate action prediction.",
+        "Code_Url": ""
+    },
+    {
+        "Name": "Breaking the Data Barrier--Building GUI Agents Through Task Generalization",
+        "Platform": "Web and Android (Mobile)",
+        "Date": "April 2025",
+        "Paper_Url": "https://arxiv.org/abs/2504.10127",
+        "Highlight": "Introduces mid-training on diverse non-GUI reasoning tasks (particularly math and code) to substantially enhance GUI agent planning capabilities.",
+        "Code_Url": "https://github.com/hkust-nlp/GUIMid"
+    },
+    {
+        "Name": "AgentRewardBench: Evaluating Automatic Evaluations of Web Agent Trajectories",
+        "Platform": "Web",
+        "Date": "April 2025",
+        "Paper_Url": "https://arxiv.org/abs/2504.08942",
+        "Highlight": "The first benchmark to rigorously evaluate LLM-based judges against human expert annotations across multiple web agent tasks.",
+        "Code_Url": "https://agent-reward-bench.github.io"
+    },
+    {
+        "Name": "RealWebAssist: A Benchmark for Long-Horizon Web Assistance with Real-World Users",
+        "Platform": "Web",
+        "Date": "April 2025",
+        "Paper_Url": "https://arxiv.org/abs/2504.10445",
+        "Highlight": "The first benchmark to evaluate long-horizon web assistance using real-world users’ sequential instructions expressed in natural and often ambiguous language.",
+        "Code_Url": "https://scai.cs.jhu.edu/projects/RealWebAssist/"
+    },
+    {
+        "Name": "InfiGUI-R1: Advancing Multimodal GUI Agents from Reactive Actors to Deliberative Reasoners",
+        "Platform": "Web, Desktop, and Android",
+        "Date": "April 2025",
+        "Paper_Url": "https://arxiv.org/abs/2504.14239",
+        "Highlight": "Two-stage training framework Actor2Reasoner: (1) Reasoning Injection via Spatial Reasoning Distillation, and (2) Deliberation Enhancement via Reinforcement Learning with Sub-goal Guidance and Error Recovery Scenario Construction.",
+        "Code_Url": "https://github.com/Reallm-Labs/InfiGUI-R1"
+    },
+    {
+        "Name": "UI-E2I-Synth: Advancing GUI Grounding with Large-Scale Instruction Synthesis",
+        "Platform": "Web, Windows, and Android",
+        "Date": "April 2025",
+        "Paper_Url": "https://arxiv.org/abs/2504.11257",
+        "Highlight": "Introduces a three-stage synthetic data pipeline for GUI grounding with both explicit and implicit instruction synthesis.",
+        "Code_Url": "https://colmon46.github.io/i2e-bench-leaderboard/"
+    },
+    {
+        "Name": "ViMo: A Generative Visual GUI World Model for App Agent",
+        "Platform": "Mobile Android",
+        "Date": "April 2025",
+        "Paper_Url": "https://arxiv.org/abs/2504.13936",
+        "Highlight": "First GUI world model that predicts future visual GUI states.",
+        "Code_Url": "https://ai-agents-2030.github.io/ViMo/"
+    }
+    
+    
+    
+]
