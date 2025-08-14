@@ -674,9 +674,8 @@ class DataExtractor:
                     year_match = re.search(r'\b(19|20)\d{2}\b', ref_text)
                     year = year_match.group(0) if year_match else ""
                     
-                    # Check for arXiv ID (use original text for ID extraction)
-                    arxiv_match = re.search(r'arXiv:(\d+\.\d+)', ref_text)
-                    arxiv_id = arxiv_match.group(1) if arxiv_match else ""
+                    # Extract arXiv ID using our bulletproof method
+                    arxiv_id = self.extract_arxiv_id(ref_text) or ""
                     
                     # Check cache first if we have an arXiv ID (thread-safe)
                     if arxiv_id:
@@ -786,7 +785,7 @@ class DataExtractor:
             abs_url = f"https://arxiv.org/abs/{arxiv_id}"
             
             # Add delay to avoid rate limiting
-            time.sleep(1.25)
+            time.sleep(.50)
             
             response = requests.get(abs_url, headers=headers, timeout=15)
             if response.status_code == 403:
@@ -861,7 +860,7 @@ class DataExtractor:
             references = []
             
             # Try to get enhanced content from HTML version
-            time.sleep(1.25)  # Another delay before HTML request
+            time.sleep(0.50)  # Another delay before HTML request
             
             html_url = f"https://arxiv.org/html/{arxiv_id}"
             try:
