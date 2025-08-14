@@ -190,7 +190,7 @@ Respond with ONLY the JSON object, no additional text.
             # Cleanup
             del model_inputs, generated_ids
             self.cleanup_memory()
-            
+            time.sleep(25)
             return responses
             
         except Exception as e:
@@ -426,7 +426,7 @@ def analyze_papers_gpu_optimized(input_file, output_file, batch_size=4, model_na
     if log_file:
         logger.log(f"Log saved to: {log_file}")
     logger.log(f"{'='*60}")
-    time.sleep(25)
+    
     return analyzed_papers
 
 def save_checkpoint(analyzed_papers, processed_count, checkpoint_file, logger):
