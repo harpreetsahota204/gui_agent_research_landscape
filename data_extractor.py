@@ -3,549 +3,405 @@ import requests
 import time
 import re
 import argparse
-import pandas as pd
-from bs4 import BeautifulSoup
-from collections import Counter, defaultdict
-from urllib.parse import urlparse
 import os
 from datetime import datetime
 import logging
-import xml.etree.ElementTree as ET
+from bs4 import BeautifulSoup
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
+from typing import Dict, List, Optional, Tuple, Set
+import unicodedata
+from difflib import SequenceMatcher
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Configure logging with better formatting
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%H:%M:%S'
+)
 logger = logging.getLogger(__name__)
 
+# Special papers not on arXiv but widely cited
+SPECIAL_PAPERS = {
+    'rico': {
+        'title': 'Rico: A Mobile App Dataset for Building Data-Driven Design Applications',
+        'year': 2017,
+        'month':10,
+        'platforms': ['Mobile', 'Android'],
+        'cited_by': [],
+        "sections": {
+        "abstract": "Rico is presented, the largest repository of mobile app designs to date, created to support five classes of data-driven applications: design search, UI layout generation, UI code generation, user interaction modeling, and user perception prediction. ",
+        "introduction": """Data-driven models of design can scaffold the creation of mobile apps. Having access to relevant examples helps designers understand best practices and trends. In the future, data-driven models will enable systems that can predict whether a design will achieve its specified goals before it is deployed to millions of people, and scale the creation of personalized designs that automatically adapt to diverse users and contexts. To build these models, researchers require design datasets which expose the details of mobile app designs at scale. This paper presents Rico, the largest repository of mobile app designs to date, comprising visual, textual, structural and interactive properties of UIs. These properties can be combined in different ways to support five classes of datadriven applications: design search, UI layout generation, UI code generation, user interaction modeling, and user perception prediction. Rico was built by mining Android apps at runtime via humanpowered and programmatic exploration. Like its predecessor ERICA, Rico’s app mining infrastructure requires no access to — or modification of — an app’s source code. Apps are downloaded from the Google Play Store and served to crowd workers through a web interface. When crowd workers use an app, the system records a user interaction trace that captures the UIs visited and the interactions performed on them. Then, an automated agent replays the trace to warm up a new copy of the app, and continues the exploration programmatically. By combining crowdsourcing and automation, Rico can achieve higher coverage over an app’s UI states than either crawling strategy alone. The Rico dataset contains design and interaction data for
+72, 219 UIs from 9, 772 apps, spanning 27 Google Play categories. For each app, Rico presents a collection of individual user interaction traces, as well as a collection of unique UIs determined by a novel content-agnostic similarity heuristic.
+Additionally, since the Rico dataset is large enough to support deep-learning applications, each UI is annotated with a low-dimensional vector produced by training an autoencoder for UI layout similarity, which can be used to cluster and retrieve similar UIs from different apps.""",
+        "conclusion": "The are a number of opportunities to extend and improve the Rico dataset. New models could be trained to annotate Rico’s design components with richer labels, like classifiers that describe the semantic function of elements and screens (e.g., search, login). Similarly, researchers could crowdsource additional perceptual annotations (e.g., first impressions) over design components such as screenshots and animations, and use them to train newer types of perception-based predictive models. Unlike static research datasets such as ImageNet [12], Rico will become outdated over time if new apps are not continually crawled and their entries updated in the database. Therefore, another important avenue for future work is to explore ways to make app mining more sustainable. One potential path to sustainability is to create a platform where designers can use apps and contribute their traces to the repository for the entire community’s benefit."
+        },
+        'title_variants': [
+            'rico a mobile app aataset for building data driven design applications',
+        ]
+    },
+    'erica': {
+        'title': 'ERICA: Interaction Mining Mobile Apps',
+        'year': 2016,
+        'month':10,
+        'platforms': ['Mobile', 'Android'],
+        'cited_by': [],
+        "sections": {
+        "abstract": """Design plays an important role in the adoption of apps. App design, however, is a complex process with multiple design activities. To enable data-driven app design applications, we present interaction mining – a method for capturing both static components (UI layouts, visual details) and dynamic components (user flows, motion details) of an app's design.
+We present ERICA, a system that takes a scalable, human-computer approach to interaction mining existing Android apps without the need to modify them in any way. As users interact with apps through ERICA, the system detects UI changes, seamlessly records multiple data streams in the background, and unifies them into a comprehensive user interaction trace.
+Using ERICA, we collected interaction traces from over a thousand popular Android apps. Leveraging this trace data, we built machine learning classifiers to detect elements and layouts indicative of 23 common user flows. User flows are an important component of user experience (UX) design and consist of a sequence of UI states that represent semantically meaningful tasks such as searching or composing.
+With these classifiers, we identified and indexed more than 3,000 flow examples, and released the largest online search engine of user flows in Android apps. This research represents a significant advancement in understanding mobile app design patterns through automated interaction mining, providing designers and developers with unprecedented access to real-world app interaction data.""",
+        "introduction": """Design plays an important role in the adoption of apps. App design, however, is a complex process comprised of multiple design activities: researchers, designers, and developers must all work together to identify user needs, create user flows (UX design), determine the proper layout of UI elements (UI design), and define their visual (visual design) and interactive (interaction design) properties. To create durable and engaging applications, app builders must consider hundreds of solutions from a vast space of design possibilities, prototype the most promising ones, and evaluate their effectiveness heuristically and through user testing.
+To help navigate this complex process, this paper introduces interaction mining: capturing and analyzing both static (UI layouts, visual details) and dynamic (user flows, motion details) components of an application's design. Mined at scale, the data produced by interaction mining enables tools that scaffold the app design process: finding examples for design inspiration, understanding successful patterns and trends, generating new designs, and evaluating alternatives.
+This paper takes a human-computer approach to interaction mining, using people to understand and interact with UIs, and machines to capture the UI states they explore. This approach is manifest in ERICA, a system for interaction mining Android apps which demonstrates, for the first time, a scalable way to mine the dynamic components of digital design. ERICA provides a web-based interface through which users interact with apps installed on Android devices. As a user navigates an app's interface, ERICA detects UI changes, seamlessly records screenshots, view hierarchies, and user events, and combines them into a unified representation called an interaction trace. ERICA requires no modifications to an app's source code or binary, making interaction mining possible for any Android app.
+We used ERICA to collect user interaction traces from more than one thousand popular apps from the Google Play Store. These traces contain more than 18,000 unique UI screens, 50,000 user interactions, and half a million interactive elements. Leveraging this trace data, we built machine learning classifiers to detect elements and layouts indicative of 23 common user flows. User flows are important components of UX design, comprising sequences of UI states that represent semantically meaningful tasks such as searching or composing. With these classifiers, we identified and indexed more than 3,000 flow examples, and released the largest online search engine of user flows in mobile apps.""",
+        "conclusion": """This paper demonstrates — for the first time — the possibility of mining user interactions and dynamic design data from mobile apps. Our system, ERICA, uses a web-based interface to allow crowdsourced data collection over the Internet. One important avenue for future work is to mine a more substantial portion of the available mobile apps, perhaps using crowd workers on platforms such as Amazon Mechanical Turk.
+Another way to improve the scale of ERICA's repository would be to increase the coverage of UI states within each app. One way this might be accomplished is by combining multiple user traces. The research illustrates how coverage increased for three apps of varying complexity (measured by the number of Android activities found in their APK files) as multiple traces were combined. The observations show that, like in heuristic evaluation, 5-8 users appear to provide optimal coverage. For truly complex apps, coverage may remain low even after aggregating many user traces, since many UI states exist that humans do not visit during regular usage. Future work could explore augmenting ERICA with automated exploration strategies to visit these states.
+While this paper focused on an application in UX design, interaction mining can be useful for building data-driven design tools targeted at other app design activities. The data produced by interaction mining can help designers understand UI layout patterns and motion details in existing apps. For example, heatmaps of common semantic element placements in UI layouts and animation curves of sliding drawer menus can be inferred using motion detection techniques on the changing images of the UI.
+The UI data captured by interaction mining can also support learning probabilistic generative models of mobile designs. Such models could enable automated mobile UI generation — useful for building personalized interfaces and retargeting UIs across form factors. The UI data produced by ERICA even has enough information about elements and layouts that it can be used to reverse engineer the source code of existing app UIs, including rendering interfaces in different form factors.
+Another important application area for interaction mining is usability testing. Interaction mining can help designers discover usability bugs, such as users mistaking a UI screen to be scrollable. Interaction data collected from a sufficiently large number of users could also enable summative usability testing for mobile apps without the need for source code modifications.
+Outside of design, semantic understanding of apps enabled by interaction mining could improve the current metadata-based approaches to indexing and searching in online app stores. For example, learning a similarity metric over apps based on the types of user flows they expose could enable more accurate labeling and clustering. In addition, improved semantic understanding of mobile apps could enable automated identification of useful target states for deep-linking.
+With Google's recent foray into web-based Android app streaming, mobile app usage through a web interface may become mainstream. In such a world, an approach like ERICA could enable interaction mining at truly massive scale."""
+        },
+        'title_variants': [
+            'erica interaction mining mobile apps',
+        ]
+    }
+}
+
 class DataExtractor:
+    """Enhanced data extractor with simplified architecture and improved performance."""
+    
     def __init__(self, data_dir="data", output_file="processed_papers.json", request_delay=0.1):
         self.data_dir = data_dir
         self.output_file = output_file
         self.request_delay = request_delay
-        self.processed_papers = []
-        self.processing_log = {"processed": set(), "failed": set(), "skipped": set()}
         
-        # NEW: Index of all processed papers by arxiv_id for fast lookup
+        # Simplified data structures
         self.papers_index = {}  # arxiv_id -> paper_data
+        self.processed_ids = set()
+        self.failed_ids = set()
         
-        # Cache for references to avoid redundant arXiv requests
+        # Simplified caching
         self.reference_cache = {}
         self.cache_file = 'reference_cache.json'
-        self.load_reference_cache()
+        self.load_cache()
         
-        # Thread locks for thread-safe operations
-        self.cache_lock = threading.Lock()
-        self.processing_lock = threading.Lock()
-        self.papers_index_lock = threading.Lock()  # NEW: Lock for papers index
-        
-        # Platform keywords for detection
-        self.platform_keywords = {
-            'Web': ['web', 'browser', 'HTML', 'DOM', 'website', 'HTTP', 'javascript', 'CSS'],
-            'Mobile': ['mobile', 'smartphone', 'phone', 'app', 'cellular'],
-            'Android': ['android', 'APK', 'google play', 'dalvik'],
-            'iOS': ['iOS', 'iPhone', 'iPad', 'app store', 'swift', 'objective-c'],
-            'Desktop': ['desktop', 'computer', 'PC', 'workstation'],
-            'Windows': ['windows', 'win32', 'microsoft', 'DirectX', '.NET'],
-            'macOS': ['macOS', 'mac', 'apple', 'cocoa', 'darwin'],
-            'Linux': ['linux', 'ubuntu', 'unix', 'bash', 'shell']
+        # Performance tracking
+        self.stats = {
+            'api_calls': 0,
+            'cache_hits': 0,
+            'start_time': time.time()
         }
         
-        # Category keywords for appears_in detection
-        self.category_keywords = {
-            'survey': ['survey', 'review', 'overview', 'comprehensive analysis', 'systematic review', 'literature review'],
-            'dataset': ['dataset', 'corpus', 'collection', 'benchmark data', 'training data', 'evaluation data'],
-            'models': ['model', 'architecture', 'neural network', 'transformer', 'framework', 'algorithm'],
-            'benchmark': ['benchmark', 'evaluation', 'test suite', 'performance comparison', 'assessment', 'metric']
-        }
-
-    def load_and_deduplicate_papers(self):
-        """Load all papers from JSON files and deduplicate"""
-        logger.info("Loading and deduplicating papers from data directory...")
-        
-        all_papers = []
-        json_files = [f for f in os.listdir(self.data_dir) if f.endswith('.json')]
-        
-        for filename in json_files:
-            filepath = os.path.join(self.data_dir, filename)
-            category = filename.replace('.json', '')
-            
-            try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    papers = json.load(f)
-                
-                for paper in papers:
-                    paper['appears_in'] = [category]  # Track source file
-                    all_papers.append(paper)
-                
-                logger.info(f"Loaded {len(papers)} papers from {filename}")
-            except Exception as e:
-                logger.error(f"Failed to load {filepath}: {e}")
-        
-        # Deduplicate based on Paper_Url
-        deduplicated = {}
-        for paper in all_papers:
-            url = paper.get('Paper_Url', '')
-            if url in deduplicated:
-                # Merge appears_in lists
-                deduplicated[url]['appears_in'].extend(paper['appears_in'])
-                deduplicated[url]['appears_in'] = list(set(deduplicated[url]['appears_in']))
-            else:
-                deduplicated[url] = paper
-        
-        logger.info(f"Deduplicated {len(all_papers)} papers to {len(deduplicated)} unique papers")
-        return list(deduplicated.values())
-
-    def extract_arxiv_id(self, url):
-        """Extract arXiv ID from URL - handles all possible formats by normalizing to lowercase first"""
-        if not url:
-            return None
-        
-        # Normalize to lowercase to handle all case variations
-        url_lower = url.lower()
-        
-        # Comprehensive arXiv URL patterns for all possible formats
-        patterns = [
-            # New format (post-2007): YYMM.NNNNN with optional version
-            r'(?:https?://)?(?:www\.)?arxiv\.org/abs/(\d{4}\.\d{4,5})(?:v\d+)?/?(?:\?.*)?',
-            r'(?:https?://)?(?:www\.)?arxiv\.org/pdf/(\d{4}\.\d{4,5})(?:\.pdf)?(?:v\d+)?/?(?:\?.*)?',
-            r'(?:https?://)?(?:www\.)?arxiv\.org/html/(\d{4}\.\d{4,5})(?:v\d+)?/?(?:\?.*)?',
-            # Old format (pre-2007): subject-class/YYMMnnn
-            r'(?:https?://)?(?:www\.)?arxiv\.org/abs/([a-z-]+(?:\.[a-z]{2})?/\d{7})(?:v\d+)?/?(?:\?.*)?',
-            r'(?:https?://)?(?:www\.)?arxiv\.org/pdf/([a-z-]+(?:\.[a-z]{2})?/\d{7})(?:\.pdf)?(?:v\d+)?/?(?:\?.*)?',
-            # Citation formats
-            r'arxiv:(\d{4}\.\d{4,5})(?:v\d+)?',
-            r'arxiv:([a-z-]+(?:\.[a-z]{2})?/\d{7})(?:v\d+)?',
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, url_lower)
-            if match:
-                return match.group(1)
-        
-        return None
-
-    def parse_arxiv_date(self, arxiv_id):
-        """Extract year and month from arXiv ID"""
-        if not arxiv_id:
-            return None, None
-        
-        try:
-            # Format: YYMM.NNNNN or YYYY.NNNNN
-            parts = arxiv_id.split('.')
-            if len(parts) != 2:
-                return None, None
-            
-            year_month = parts[0]
-            
-            if len(year_month) == 4:  # YYMM format
-                year = 2000 + int(year_month[:2])
-                month = int(year_month[2:])
-            elif len(year_month) >= 4:  # YYYY format (newer papers)
-                if '.' in arxiv_id and len(year_month) >= 6:
-                    # This might be YYYYMM format
-                    year = int(year_month[:4])
-                    month = int(year_month[4:6]) if len(year_month) >= 6 else None
-                else:
-                    # Just year, try to extract from the decimal part or default
-                    year = int(year_month)
-                    month = None
-            else:
-                return None, None
-            
-            # Validate month
-            if month and (month < 1 or month > 12):
-                month = None
-            
-            return year, month
-            
-        except (ValueError, IndexError):
-            return None, None
-
-    def parse_platform_string(self, platform_str):
-        """Parse platform string into clean list"""
-        if not platform_str:
-            return []
-        
-        # Clean and split the string
-        clean_str = platform_str.lower()
-        
-        # Remove common noise words (using word boundaries to avoid cutting words like "Android")
-        import re
-        noise_patterns = [
-            r'\bplatforms?\b',  # platform/platforms
-            r'\bdevices?\b',    # device/devices  
-            r'\band\b',         # and (word boundary)
-            r'\bthe\b',         # the (word boundary)
-            r'\bos\b',          # os (word boundary)
-        ]
-        for pattern in noise_patterns:
-            clean_str = re.sub(pattern, ' ', clean_str, flags=re.IGNORECASE)
-        
-        # Split on common separators and whitespace
-        separators = [',', '&', '+', '/', '|', ' ']
-        parts = [clean_str]
-        for sep in separators:
-            new_parts = []
-            for part in parts:
-                if sep == ' ':
-                    # For space, split on multiple whitespace and filter empty
-                    new_parts.extend([p.strip() for p in re.split(r'\s+', part) if p.strip()])
-                else:
-                    new_parts.extend([p.strip() for p in part.split(sep) if p.strip()])
-            parts = new_parts
-        
-        # Clean and standardize each part
-        platforms = []
-        standardization_map = {
-            'web': 'Web',
-            'browser': 'Web',
-            'mobile': 'Mobile',
-            'android': 'Android',
-            'ios': 'iOS',
-            'iphone': 'iOS',
-            'ipad': 'iOS',
-            'desktop': 'Desktop',
-            'computer': 'Desktop',
-            'pc': 'Desktop',
-            'windows': 'Windows',
-            'macos': 'macOS',
-            'mac': 'macOS',
-            'linux': 'Linux',
-            'ubuntu': 'Linux',
-            'unix': 'Linux'
+        # Simplified platform keywords (consolidated)
+        self.platforms = {
+            'Web': ['web', 'browser', 'html', 'dom', 'website', 'javascript', 'css'],
+            'Mobile': ['mobile', 'smartphone', 'phone', 'app'],
+            'Android': ['android', 'apk', 'google play'],
+            'iOS': ['ios', 'iphone', 'ipad', 'swift', 'objective-c'],
+            'Desktop': ['desktop', 'computer', 'pc', 'workstation'],
+            'Windows': ['windows', 'win32', 'microsoft'],
+            'macOS': ['macos', 'mac', 'cocoa', 'darwin'],
+            'Linux': ['linux', 'ubuntu', 'unix', 'bash']
         }
         
-        for part in parts:
-            # Clean whitespace and normalize
-            part = re.sub(r'\s+', ' ', part.strip().lower())
-            if part and len(part) > 1:
-                # Try direct mapping first
-                if part in standardization_map:
-                    platforms.append(standardization_map[part])
-                else:
-                    # Capitalize first letter for unknown platforms
-                    platforms.append(part.capitalize())
-        
-        return list(set(platforms))  # Remove duplicates
+        # Simplified category detection
+        self.categories = {
+            'survey': ['survey', 'review', 'overview'],
+            'dataset': ['dataset', 'corpus', 'collection', 'benchmark data'],
+            'models': ['model', 'architecture', 'neural network', 'transformer'],
+            'benchmark': ['benchmark', 'evaluation', 'test suite', 'metric']
+        }
 
-    def detect_platforms_from_content(self, content):
-        """Detect platforms from paper content using keywords"""
-        if not content:
-            return []
-        
-        content_lower = content.lower()
-        detected_platforms = []
-        
-        for platform, keywords in self.platform_keywords.items():
-            for keyword in keywords:
-                if keyword.lower() in content_lower:
-                    detected_platforms.append(platform)
-                    break  # Found one keyword for this platform, move to next
-        
-        return list(set(detected_platforms))
+    def normalize_text(self, text: str) -> str:
+        """Normalize text for comparison - remove special chars, lowercase, etc."""
+        if not text:
+            return ""
+        # Remove accents
+        text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
+        # Lowercase and remove special characters
+        text = re.sub(r'[^a-z0-9\s]', ' ', text.lower())
+        # Normalize whitespace
+        text = ' '.join(text.split())
+        return text
 
-    def detect_categories_from_content(self, content):
-        """Detect appears_in categories from paper content using keywords"""
-        if not content:
-            return []
-        
-        content_lower = content.lower()
-        detected_categories = []
-        
-        for category, keywords in self.category_keywords.items():
-            for keyword in keywords:
-                if keyword.lower() in content_lower:
-                    detected_categories.append(category)
-                    break  # Found one keyword for this category, move to next
-        
-        return list(set(detected_categories))
-
-    def add_paper_to_index(self, paper_data):
-        """Add a paper to the index for fast lookup (thread-safe)"""
-        with self.papers_index_lock:
-            self.papers_index[paper_data['arxiv_id']] = paper_data
-            logger.debug(f"Added paper to index: {paper_data['arxiv_id']}")
-
-    def find_paper_by_arxiv_id(self, arxiv_id):
-        """Find a paper by arxiv_id in the index (thread-safe)"""
-        with self.papers_index_lock:
-            return self.papers_index.get(arxiv_id)
-
-    def update_paper_citations(self, arxiv_id, cited_by_list):
-        """Update cited_by relationships for an existing paper (thread-safe)"""
-        with self.papers_index_lock:
-            if arxiv_id in self.papers_index:
-                paper = self.papers_index[arxiv_id]
-                if 'cited_by' not in paper:
-                    paper['cited_by'] = []
-                
-                # Add new citations
-                paper['cited_by'].extend(cited_by_list)
-                # Remove duplicates while preserving order
-                paper['cited_by'] = list(dict.fromkeys(paper['cited_by']))
-                
-                logger.info(f"Updated citations for {arxiv_id}: now cited by {len(paper['cited_by'])} papers")
-                return True
-        return False
-
-    def get_all_papers_from_index(self):
-        """Get all papers from the index as a list (thread-safe)"""
-        with self.papers_index_lock:
-            return list(self.papers_index.values())
-
-    def update_backward_citations(self, newly_processed_papers):
-        """Update backward citation relationships after processing a level (thread-safe)"""
-        logger.info(f"Updating backward citations for {len(newly_processed_papers)} newly processed papers...")
-        
-        updates_made = 0
-        
-        for citing_paper in newly_processed_papers:
-            citing_id = citing_paper['arxiv_id']
-            
-            # For each reference in this paper
-            for ref in citing_paper.get('references', []):
-                if ref.get('has_arxiv') and ref.get('arxiv_id'):
-                    cited_arxiv_id = ref['arxiv_id']
-                    
-                    # Check if the cited paper is already in our index (processed)
-                    cited_paper = self.find_paper_by_arxiv_id(cited_arxiv_id)
-                    if cited_paper:
-                        # Update the cited paper's cited_by list
-                        with self.papers_index_lock:
-                            if 'cited_by' not in cited_paper:
-                                cited_paper['cited_by'] = []
-                            
-                            # Add the citing paper if not already there
-                            if citing_id not in cited_paper['cited_by']:
-                                cited_paper['cited_by'].append(citing_id)
-                                updates_made += 1
-                                logger.debug(f"Added backward citation: {cited_arxiv_id} ← {citing_id}")
-        
-        logger.info(f"✓ Updated {updates_made} backward citation relationships")
-        return updates_made
-
-    def extract_title_from_citation(self, citation_text):
-        """Extract title from citation using improved pattern matching"""
-        if not citation_text:
-            return citation_text[:80] if len(citation_text) > 80 else citation_text
-        
-        # Step 1: Clean the citation by removing problematic suffixes
-        clean_text = citation_text
-        
-        # Remove "arXiv preprint" and everything after it
-        arxiv_patterns = [
-            r'\s*arXiv preprint.*$',
-            r'\s*arXiv:\d+\.\d+.*$',
-            r'\s*arXiv\s+\d+\.\d+.*$'
-        ]
-        
-        for pattern in arxiv_patterns:
-            clean_text = re.sub(pattern, '', clean_text, flags=re.IGNORECASE)
-        
-        # Remove URLs and DOIs
-        url_patterns = [
-            r'\s*https?://[^\s]+',  # HTTP/HTTPS URLs
-            r'\s*www\.[^\s]+',      # www URLs
-            r'\s*doi:[^\s]+',       # DOI identifiers
-            r'\s*DOI:[^\s]+',       # DOI identifiers (caps)
-        ]
-        
-        for pattern in url_patterns:
-            clean_text = re.sub(pattern, '', clean_text, flags=re.IGNORECASE)
-        
-        # Remove other common suffixes that aren't part of the title
-        suffix_patterns = [
-            r'\s*In\s+Proceedings.*$',
-            r'\s*Proceedings\s+of.*$',
-            r'\s*Journal\s+of.*$',
-            r'\s*Conference\s+on.*$',
-            r'\s*Association for.*$',  # "Association for Computational Linguistics"
-            r'\s*\d+[-–]\d+\s*$',      # Page numbers like "74-81" or "74–81"
-        ]
-        
-        for pattern in suffix_patterns:
-            clean_text = re.sub(pattern, '', clean_text, flags=re.IGNORECASE)
-        
-        # Step 2: Now extract title from the cleaned text
-        
-        # Pattern 1: Title in quotes (most reliable)
-        quoted_pattern = r'"([^"]{5,150})"'
-        quoted_match = re.search(quoted_pattern, clean_text)
-        if quoted_match:
-            title = quoted_match.group(1).strip()
-            # Clean up trailing years
-            title = re.sub(r',?\s*\d{4}\.?$', '', title).strip()
-            return title
-        
-        # Pattern 2: NEW - Handle "Author et al. (YYYY) Full Author Names. YYYY. Title Here" format
-        # This is specifically for the Carlini et al. case
-        # Look for year followed by period, then title with common academic keywords
-        year_dot_pattern = r'(\d{4})\.\s*([A-Z][^.]+(?:Models?|Vision|Learning|Analysis|System|Method|Framework|Study|Evaluation|Understanding|Interface|Agent|Language|Neural|Deep|Machine|Automatic|Reinforcement|Quantifying|Memorization|Approach|Training|Detection|Recognition|Planning)[^.]*)'
-        year_dot_match = re.search(year_dot_pattern, clean_text, re.IGNORECASE)
-        if year_dot_match:
-            potential_title = year_dot_match.group(2).strip()
-            # Clean up the title part
-            potential_title = re.sub(r'\s+', ' ', potential_title)  # Normalize whitespace
-            if (len(potential_title) > 10 and 
-                not re.match(r'^[A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+', potential_title) and  # Not "John Smith Brown"
-                not re.match(r'^[A-Z][a-z]+\s+[A-Z][a-z]+,?\s+[A-Z]', potential_title)):  # Not "John Smith, A"
-                return potential_title
-        
-        # Pattern 3: IEEE Format - "Author, Title, Journal/Conference, details"
-        # Look for: "J. Smith, Title here, Journal Name, vol. X, 2023"
-        # Must have journal/conference indicators like "vol.", "pp.", "IEEE", "ACM", etc.
-        ieee_pattern = r'^[A-Z]\.\s*[A-Z][a-z]+(?:\s+et\s+al\.)?[,\s]+([^,]{10,100})[,\s]+[^,]*(?:vol\.|pp\.|IEEE|ACM|Journal|Conference|Proceedings).*\d{4}'
-        ieee_match = re.search(ieee_pattern, clean_text, re.IGNORECASE)
-        if ieee_match:
-            title = ieee_match.group(1).strip()
-            # Clean up common IEEE artifacts
-            title = re.sub(r'^"([^"]+)"$', r'\1', title)  # Remove quotes
-            title = re.sub(r',?\s*\d{4}\.?$', '', title).strip()  # Remove years
-            if len(title) > 5 and not re.match(r'^[A-Z]\.\s*[A-Z]', title):  # Not author initials
-                return title
-        
-        # Pattern 4: Title after LAST year - "Author et al. 2021. Title here."
-        # Find all years and use the last one to avoid author name confusion
-        year_matches = list(re.finditer(r'\b\d{4}\b', clean_text))
-        if year_matches:
-            last_year_match = year_matches[-1]
-            after_last_year = clean_text[last_year_match.end():].strip()
-            if after_last_year.startswith('.'):
-                after_last_year = after_last_year[1:].strip()
-            
-            # Look for title pattern after the last year
-            # Split by periods and take the first substantial part
-            parts = after_last_year.split('.')
-            for part in parts:
-                part = part.strip()
-                if (len(part) > 10 and 
-                    not re.match(r'^\d+', part) and  # Not starting with numbers
-                    not re.match(r'^[A-Z]\w*,?\s+[A-Z]', part) and  # Not "Author, A"
-                    not re.match(r'^[A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+', part)):  # Not "John Smith Brown"
-                    # Clean up trailing years
-                    title = re.sub(r',?\s*\d{4}\.?$', '', part).strip()
-                    # Normalize whitespace
-                    title = re.sub(r'\s+', ' ', title)
-                    return title
-        
-        # Pattern 5: Title after (year) - "Author (2021). Title here."
-        # Use the last parenthetical year to avoid confusion
-        paren_years = list(re.finditer(r'\(\d{4}\)', clean_text))
-        if paren_years:
-            last_paren_year = paren_years[-1]
-            after_paren = clean_text[last_paren_year.end():].strip()
-            if after_paren.startswith('.'):
-                after_paren = after_paren[1:].strip()
-            
-            # Extract title after parenthetical year
-            parts = after_paren.split('.')
-            for part in parts:
-                part = part.strip()
-                if (len(part) > 10 and 
-                    not re.match(r'^\d+', part) and
-                    not re.match(r'^[A-Z]\w*,?\s+[A-Z]', part)):  # Not "Author, A"
-                    # Clean up trailing years
-                    title = re.sub(r',?\s*\d{4}\.?$', '', part).strip()
-                    # Normalize whitespace
-                    title = re.sub(r'\s+', ' ', title)
-                    return title
-        
-        # Pattern 6: Simple sentence-based title extraction
-        sentences = [s.strip() for s in clean_text.split('.') if s.strip()]
-        
-        # Look for sentences with title keywords (but not author lists)
-        title_keywords = [
-            'learning', 'model', 'system', 'analysis', 'approach', 'method', 'framework', 
-            'study', 'evaluation', 'understanding', 'interface', 'web', 'mobile', 'gui', 
-            'agent', 'language', 'vision', 'neural', 'deep', 'machine', 'automatic', 
-            'reinforcement', 'using', 'planning', 'training', 'detection', 'recognition',
-            'quantifying', 'memorization', 'across'
-        ]
-        
-        for sentence in sentences:
-            if (len(sentence) > 10 and 
-                not re.match(r'^\(\d{4}\)', sentence) and  # Not starting with (year)
-                not re.match(r'^\d{4}', sentence) and  # Not starting with year
-                not re.match(r'^et al', sentence, re.IGNORECASE) and  # Not "et al"
-                not sentence.lower().startswith('in ') and
-                not sentence.lower().startswith('proceedings') and
-                # Not author lists (improved heuristics)
-                sentence.count(',') <= 2 and  # Not too many commas
-                len(sentence.split()) <= 15 and  # Not too long
-                not re.match(r'^[A-Z][a-z]+,?\s+[A-Z][a-z]+\s+[A-Z][a-z]+', sentence) and  # Not "John Smith Brown"
-                not re.match(r'^[A-Z][a-z]+\s+[A-Z][a-z]+,?\s+[A-Z]', sentence) and  # Not "John Smith, A"
-                # Has title keywords (word boundaries)
-                any(re.search(rf'\b{keyword.lower()}\b', sentence.lower()) for keyword in title_keywords)):
-                # Clean up trailing years and normalize whitespace
-                title = re.sub(r',?\s*\d{4}\.?$', '', sentence).strip()
-                title = re.sub(r'\s+', ' ', title)
-                return title
-        
-        # Second pass: Look for other reasonable titles
-        for sentence in sentences:
-            if (len(sentence) > 15 and 
-                not re.match(r'^\(\d{4}\)', sentence) and  # Not starting with (year)
-                not re.match(r'^\d{4}', sentence) and  # Not starting with year
-                not re.match(r'^et al', sentence, re.IGNORECASE) and  # Not "et al"
-                not re.match(r'^[A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+', sentence) and  # Not "John Smith Brown"
-                not re.match(r'^[A-Z]\w*,\s+[A-Z]\w+', sentence) and  # Not "Author, Name"
-                not sentence.lower().startswith('in ') and
-                not sentence.lower().startswith('proceedings') and
-                sentence[0].isupper() and  # Starts with capital
-                len(sentence.split()) >= 4):  # Reasonably long
-                # Clean up trailing years and normalize whitespace
-                title = re.sub(r',?\s*\d{4}\.?$', '', sentence).strip()
-                title = re.sub(r'\s+', ' ', title)
-                return title
-        
-        # Pattern 7: Look for capitalized phrases that could be titles
-        # Find phrases that start with capital and contain title-like words
-        title_phrases = re.findall(r'[A-Z][^.]{20,150}', clean_text)
-        for phrase in title_phrases:
-            if (not re.match(r'^[A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+', phrase) and  # Not "John Smith Brown"
-                any(word.lower() in phrase.lower() for word in ['learning', 'model', 'system', 'analysis', 'approach', 'method', 'framework', 'study', 'evaluation', 'understanding', 'interface', 'web', 'mobile', 'gui', 'agent', 'language', 'vision', 'neural', 'deep', 'machine', 'automatic', 'reinforcement', 'using', 'with', 'for', 'on', 'based', 'quantifying', 'memorization'])):
-                # Clean up trailing years and normalize whitespace
-                title = re.sub(r',?\s*\d{4}\.?$', '', phrase).strip()
-                title = re.sub(r'\s+', ' ', title)
-                return title
-        
-        # Ultimate fallback: take a reasonable chunk from the middle
-        words = clean_text.split()
-        if len(words) > 5:
-            # Skip likely author names at the beginning, take middle portion
-            start_idx = min(3, len(words) // 3)
-            end_idx = min(start_idx + 15, len(words))
-            return ' '.join(words[start_idx:end_idx])
-        
-        return clean_text[:80] if len(clean_text) > 80 else clean_text
-
-    def load_reference_cache(self):
-        """Load reference cache from file if it exists"""
+    def load_cache(self):
+        """Load reference cache from file."""
         try:
             if os.path.exists(self.cache_file):
                 with open(self.cache_file, 'r') as f:
                     self.reference_cache = json.load(f)
-                logger.info(f"Loaded {len(self.reference_cache)} cached references from {self.cache_file}")
-            else:
-                self.reference_cache = {}
-                logger.info("No reference cache found, starting fresh")
+                logger.info(f"Loaded {len(self.reference_cache)} cached references")
         except Exception as e:
-            logger.warning(f"Failed to load reference cache: {e}")
+            logger.warning(f"Failed to load cache: {e}")
             self.reference_cache = {}
 
-    def save_reference_cache(self):
-        """Save reference cache to file (thread-safe)"""
+    def save_cache(self):
+        """Save reference cache to file."""
         try:
-            with self.cache_lock:
-                with open(self.cache_file, 'w') as f:
-                    json.dump(self.reference_cache, f, indent=2)
-                logger.debug(f"Saved {len(self.reference_cache)} references to cache")
+            with open(self.cache_file, 'w') as f:
+                json.dump(self.reference_cache, f, indent=2)
         except Exception as e:
-            logger.warning(f"Failed to save reference cache: {e}")
+            logger.warning(f"Failed to save cache: {e}")
 
-    def extract_section_content(self, soup, section_keywords, max_paragraphs=5, max_chars=2000):
-        """Extract content from a section using multiple strategies"""
+    def save_progress(self):
+        """Save current progress to avoid data loss."""
+        papers = list(self.papers_index.values())
+        temp_file = f"temp_{self.output_file}"
+        
+        try:
+            with open(temp_file, 'w', encoding='utf-8') as f:
+                json.dump(papers, f, indent=2, ensure_ascii=False)
+            logger.debug(f"Progress saved: {len(papers)} papers")
+        except Exception as e:
+            logger.error(f"Failed to save progress: {e}")
+
+    def extract_arxiv_id(self, text: str) -> Optional[str]:
+        """Extract arXiv ID from URL or text - preserves version if present."""
+        if not text:
+            return None
+        
+        text_lower = text.lower()
+        
+        # Single comprehensive pattern for all arXiv formats (including version)
+        pattern = r'(?:arxiv[:\.]?\s*)?(\d{4}\.\d{4,5}(?:v\d+)?)'
+        match = re.search(pattern, text_lower)
+        if match:
+            return match.group(1)
+        
+        # Old format (pre-2007) with optional version
+        pattern_old = r'(?:arxiv[:\.]?\s*)?([a-z-]+(?:\.[a-z]{2})?/\d{7}(?:v\d+)?)'
+        match = re.search(pattern_old, text_lower)
+        if match:
+            return match.group(1)
+        
+        return None
+    
+    def get_arxiv_base_id(self, arxiv_id: str) -> str:
+        """Get the base arXiv ID without version suffix."""
+        if not arxiv_id:
+            return arxiv_id
+        return re.sub(r'v\d+$', '', arxiv_id)
+
+    def parse_arxiv_date(self, arxiv_id: str) -> Tuple[Optional[int], Optional[int]]:
+        """Extract year and month from arXiv ID - simplified."""
+        if not arxiv_id or '.' not in arxiv_id:
+            return None, None
+        
+        try:
+            # Remove version suffix if present before parsing date
+            arxiv_id_clean = re.sub(r'v\d+$', '', arxiv_id)
+            parts = arxiv_id_clean.split('.')
+            year_month = parts[0]
+            
+            # Handle YYMM format (most common)
+            if len(year_month) == 4 and year_month.isdigit():
+                year = 2000 + int(year_month[:2])
+                month = int(year_month[2:])
+                if 1 <= month <= 12:
+                    return year, month
+            
+            return None, None
+        except:
+            return None, None
+
+    def detect_platforms(self, text: str) -> List[str]:
+        """Simplified platform detection."""
+        if not text:
+            return []
+        
+        text_lower = text.lower()
+        detected = set()
+        
+        for platform, keywords in self.platforms.items():
+            if any(keyword in text_lower for keyword in keywords):
+                detected.add(platform)
+        
+        return list(detected)
+
+    def detect_categories(self, text: str) -> List[str]:
+        """Simplified category detection."""
+        if not text:
+            return []
+        
+        text_lower = text.lower()
+        detected = set()
+        
+        for category, keywords in self.categories.items():
+            if any(keyword in text_lower for keyword in keywords):
+                detected.add(category)
+        
+        return list(detected)
+
+    def extract_title_from_citation(self, citation: str) -> str:
+        """Simplified title extraction - focus on the most effective patterns."""
+        if not citation:
+            return ""
+        
+        # Remove common suffixes that aren't part of titles
+        citation = re.sub(r'\s*arXiv[:\s]+\d+\.\d+.*$', '', citation, flags=re.IGNORECASE)
+        citation = re.sub(r'\s*https?://.*$', '', citation)
+        citation = re.sub(r'\s*doi:.*$', '', citation, flags=re.IGNORECASE)
+        citation = re.sub(r'\s*In\s+Proceedings.*$', '', citation, flags=re.IGNORECASE)
+        citation = re.sub(r'\s*\d+[-–]\d+\s*$', '', citation)  # Page numbers
+        
+        # Pattern 1: Quoted title (most reliable)
+        match = re.search(r'"([^"]{10,200})"', citation)
+        if match:
+            return match.group(1).strip()
+        
+        # Pattern 2: After year with period
+        match = re.search(r'\b\d{4}\.\s+([A-Z][^.]{10,150})', citation)
+        if match:
+            title = match.group(1).strip()
+            # Basic validation - should contain some keywords
+            if any(word in title.lower() for word in ['learning', 'model', 'system', 'vision', 
+                                                       'analysis', 'method', 'framework', 'neural',
+                                                       'detection', 'recognition', 'interface', 'agent']):
+                return title
+        
+        # Pattern 3: After parenthetical year
+        match = re.search(r'\(\d{4}\)[.\s]+([A-Z][^.]{10,150})', citation)
+        if match:
+            return match.group(1).strip()
+        
+        # Pattern 4: First reasonable sentence
+        sentences = citation.split('.')
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if (len(sentence) > 20 and 
+                sentence[0].isupper() and
+                not re.match(r'^[A-Z][a-z]+,?\s+[A-Z]', sentence)):  # Not author names
+                return sentence
+        
+        # Fallback: return first 100 chars
+        return citation[:100].strip()
+
+    def check_rico_citation(self, reference_text: str) -> bool:
+        """Check if a reference is citing the Rico paper using fuzzy string matching."""
+        normalized_ref = self.normalize_text(reference_text)
+        
+        # Get the actual Rico title and normalize it
+        rico_title = self.normalize_text(SPECIAL_PAPERS['rico']['title'])
+        
+        # Use fuzzy string matching to check similarity
+        similarity = SequenceMatcher(None, rico_title, normalized_ref).ratio()
+        
+        # If similarity is high enough, it's a match
+        if similarity >= 0.6:  # 60% similarity threshold
+            return True
+        
+        # Also check if the normalized title appears as a substring
+        if rico_title in normalized_ref:
+            return True
+        
+        return False
+    
+    def check_erica_citation(self, reference_text: str) -> bool:
+        """Check if a reference is citing the ERICA paper using fuzzy string matching."""
+        normalized_ref = self.normalize_text(reference_text)
+        
+        # Get the actual ERICA title and normalize it
+        erica_title = self.normalize_text(SPECIAL_PAPERS['erica']['title'])
+        
+        # Use fuzzy string matching to check similarity
+        similarity = SequenceMatcher(None, erica_title, normalized_ref).ratio()
+        
+        # If similarity is high enough, it's a match
+        if similarity >= 0.6:  # 60% similarity threshold
+            return True
+        
+        # Also check if the normalized title appears as a substring
+        if erica_title in normalized_ref:
+            return True
+        
+        return False
+
+
+    def extract_references(self, soup: BeautifulSoup, citing_paper_id: str) -> List[Dict]:
+        """Extract references from HTML - simplified and with Rico detection."""
+        references = []
+        
+        # Find bibliography section
+        bib_section = soup.find(['section', 'div'], class_=re.compile(r'ltx_bibliography'))
+        if not bib_section:
+            ref_headers = soup.find_all(['h1', 'h2', 'h3'], string=re.compile(r'References?', re.IGNORECASE))
+            if ref_headers:
+                bib_section = ref_headers[0].find_next_sibling()
+        
+        if not bib_section:
+            return references
+        
+        # Extract reference items
+        ref_items = bib_section.find_all(['li', 'p'])
+        
+        for item in ref_items:
+            ref_text = item.get_text(separator=' ', strip=True)
+            if len(ref_text) < 20:
+                continue
+            
+            # Clean reference text
+            ref_text = re.sub(r'^\s*[\[\(]?\d+[\]\)]?\s*', '', ref_text)
+            
+            # Check if this cites the Rico paper
+            if self.check_rico_citation(ref_text):
+                # Add citation to Rico paper
+                if citing_paper_id not in SPECIAL_PAPERS['rico']['cited_by']:
+                    SPECIAL_PAPERS['rico']['cited_by'].append(citing_paper_id)
+                    logger.info(f"Found Rico citation in {citing_paper_id}")
+
+            # Check if this cites the ERICA paper
+            if self.check_erica_citation(ref_text):
+                # Add citation to ERICA paper
+                if citing_paper_id not in SPECIAL_PAPERS['erica']['cited_by']:
+                    SPECIAL_PAPERS['erica']['cited_by'].append(citing_paper_id)
+                    logger.info(f"Found ERICA citation in {citing_paper_id}")
+            
+            # Extract standard reference data
+            arxiv_id = self.extract_arxiv_id(ref_text)
+            
+            # Use cache if available
+            if arxiv_id and arxiv_id in self.reference_cache:
+                self.stats['cache_hits'] += 1
+                references.append(self.reference_cache[arxiv_id].copy())
+                continue
+            
+            # Extract year
+            year_match = re.search(r'\b(19|20)\d{2}\b', ref_text)
+            year = year_match.group(0) if year_match else ""
+            
+            # Parse arXiv date if available
+            month = ""
+            if arxiv_id:
+                ref_year, ref_month = self.parse_arxiv_date(arxiv_id)
+                if not year and ref_year:
+                    year = str(ref_year)
+                if ref_month:
+                    month = str(ref_month)
+            
+            ref_data = {
+                'title': self.extract_title_from_citation(ref_text),
+                'year': year,
+                'month': month,
+                'arxiv_id': arxiv_id or "",
+                'has_arxiv': bool(arxiv_id),
+                'platform': self.detect_platforms(ref_text),
+                'appears_in': self.detect_categories(ref_text),
+                'full_text': ref_text[:500]  # Limit stored text
+            }
+            
+            references.append(ref_data)
+            
+            # Cache if has arXiv ID
+            if arxiv_id:
+                self.reference_cache[arxiv_id] = {k: v for k, v in ref_data.items() if k != 'full_text'}
+        
+        return references
+
+    def extract_section_content(self, soup: BeautifulSoup, section_keywords: List[str], 
+                               max_paragraphs: int = 5, max_chars: int = 2000) -> str:
+        """Extract content from a section using multiple strategies."""
         content_parts = []
 
         # Strategy 1: Look for headers with specific classes and text
@@ -622,8 +478,8 @@ class DataExtractor:
 
         return ""
 
-    def _extract_content_after_header(self, header, max_paragraphs):
-        """Helper to extract content after a header"""
+    def _extract_content_after_header(self, header, max_paragraphs: int) -> List[str]:
+        """Helper to extract content after a header."""
         content_parts = []
         current = header.next_sibling
         paragraph_count = 0
@@ -641,173 +497,92 @@ class DataExtractor:
 
         return content_parts
 
-    def extract_references(self, soup):
-        """Extract references from the paper with caching"""
-        references = []
+    def extract_authors(self, soup: BeautifulSoup) -> List[str]:
+        """Extract authors from the paper."""
+        authors = []
         
-        # Look for bibliography section
-        bib_section = soup.find(['section', 'div'], class_=re.compile(r'ltx_bibliography'))
-        if not bib_section:
-            # Fallback: look for References header
-            ref_headers = soup.find_all(['h1', 'h2', 'h3'], string=re.compile(r'References?', re.IGNORECASE))
-            if ref_headers:
-                bib_section = ref_headers[0].find_next_sibling()
+        # Try multiple strategies to find authors
+        # Strategy 1: Look for author meta tags
+        author_metas = soup.find_all('meta', attrs={'name': 'citation_author'})
+        if author_metas:
+            for meta in author_metas:
+                author_name = meta.get('content', '').strip()
+                if author_name and author_name not in authors:
+                    authors.append(author_name)
         
-        if bib_section:
-            ref_items = bib_section.find_all(['li', 'p'], class_=re.compile(r'ltx_bibitem|reference'))
-            if not ref_items:
-                # Fallback: find all list items in bibliography section
-                ref_items = bib_section.find_all('li')
-            
-            for item in ref_items:
-                ref_text = item.get_text(separator=' ', strip=True)
-                if len(ref_text) > 20:  # Only substantial references
-                    
-                    # Clean up citation numbers like [31], (31), etc.
-                    clean_ref_text = re.sub(r'^\s*[\[\(]?\d+[\]\)]?\s*', '', ref_text)
-                    clean_ref_text = re.sub(r'^\s*\d+\.\s*', '', clean_ref_text)  # Remove "31. "
-                    
-                    # Extract title using structured citation format patterns
-                    ref_title = self.extract_title_from_citation(clean_ref_text)
-                    
-                    # Extract year
-                    year_match = re.search(r'\b(19|20)\d{2}\b', ref_text)
-                    year = year_match.group(0) if year_match else ""
-                    
-                    # Extract arXiv ID using our bulletproof method
-                    arxiv_id = self.extract_arxiv_id(ref_text) or ""
-                    
-                    # Check cache first if we have an arXiv ID (thread-safe)
-                    if arxiv_id:
-                        with self.cache_lock:
-                            if arxiv_id in self.reference_cache:
-                                logger.debug(f"Using cached reference data for {arxiv_id}")
-                                cached_ref = self.reference_cache[arxiv_id].copy()
-                                # Update the full_text with current extraction (cleaned)
-                                cached_ref['full_text'] = clean_ref_text
-                                references.append(cached_ref)
-                                continue
-                    
-                    # Extract month from arXiv ID if available
-                    month = ""
-                    if arxiv_id:
-                        ref_year, ref_month = self.parse_arxiv_date(arxiv_id)
-                        if not year:  # If we didn't find year in text, use arXiv year
-                            year = str(ref_year) if ref_year else ""
-                        month = str(ref_month) if ref_month else ""
-                    
-                    # Detect platform and appears_in from reference text using keyword matching
-                    platform = self.detect_platforms_from_content(clean_ref_text)
-                    appears_in = self.detect_categories_from_content(clean_ref_text)
-                    
-                    ref_data = {
-                        'title': ref_title,
-                        'year': year,
-                        'month': month,
-                        'arxiv_id': arxiv_id,
-                        'has_arxiv': bool(arxiv_id),
-                        'platform': platform,
-                        'appears_in': appears_in,
-                        'full_text': clean_ref_text
-                    }
-                    
-                    references.append(ref_data)
-                    
-                    # Cache the reference if it has an arXiv ID (thread-safe)
-                    if arxiv_id:
-                        with self.cache_lock:
-                            self.reference_cache[arxiv_id] = {k: v for k, v in ref_data.items() if k != 'full_text'}
-                            logger.debug(f"Cached reference data for {arxiv_id}")
+        # Strategy 2: Look for author divs with class
+        if not authors:
+            author_divs = soup.find_all('div', class_=re.compile(r'authors?', re.IGNORECASE))
+            for div in author_divs:
+                author_text = div.get_text(separator=', ', strip=True)
+                # Split by common separators
+                potential_authors = re.split(r'[,;]|\band\b', author_text)
+                for author in potential_authors:
+                    author = author.strip()
+                    # Basic validation - should look like a name
+                    if author and len(author) > 2 and not author.isdigit():
+                        # Remove affiliations (numbers in parentheses)
+                        author = re.sub(r'\([^)]*\)', '', author).strip()
+                        if author and author not in authors:
+                            authors.append(author)
         
-        return references
+        return authors
 
-    def extract_references_from_arxiv(self, arxiv_id):
-        """Extract references using multiple approaches"""
-        references = []
+    def fetch_arxiv_paper(self, arxiv_id: str, level: int = 1) -> Optional[Dict]:
+        """Fetch paper data from arXiv - enhanced with all essential information.
         
-        # Method 1: Try to get references from HTML (with better error handling)
+        Args:
+            arxiv_id: The arXiv ID to fetch (may include version like 2412.10840v2)
+            level: The processing level (1, 2, or 3)
+        """
+        
+        # For deduplication, use base ID without version
+        arxiv_id_base = self.get_arxiv_base_id(arxiv_id)
+        
+        # Check if already processed (using base ID for deduplication)
+        if arxiv_id_base in self.processed_ids:
+            return self.papers_index.get(arxiv_id_base)
+        
+        if arxiv_id_base in self.failed_ids:
+            return None
+        
         try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
+            logger.info(f"Fetching L{level} paper: {arxiv_id}")
+            self.stats['api_calls'] += 1
             
-            html_url = f"https://arxiv.org/html/{arxiv_id}"
-            response = requests.get(html_url, headers=headers, timeout=10)
-            
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.content, 'html.parser')
-                references = self.extract_references(soup)
-                
-                if references:
-                    logger.info(f"Found {len(references)} references from HTML for {arxiv_id}")
-                    return references
-        except Exception as e:
-            logger.debug(f"HTML reference extraction failed for {arxiv_id}: {e}")
-        
-        # Method 2: Try to extract from PDF text (simplified approach)
-        try:
-            # We could add PDF parsing here if needed, but for now return empty
-            # This would require additional libraries like PyPDF2 or pdfplumber
-            pass
-        except Exception as e:
-            logger.debug(f"PDF reference extraction failed for {arxiv_id}: {e}")
-        
-        # Method 3: Could add other reference extraction methods here
-        # For now, we rely on HTML extraction from arXiv
-        pass
-        
-        return references  # Return empty list if all methods fail
-
-    def get_paper_data(self, arxiv_id, level=1, cited_by=None):
-        """Get comprehensive paper data from arXiv HTML with robust extraction"""
-        try:
-            logger.info(f"Fetching level-{level} paper: {arxiv_id}")
+            # Rate limiting
+            time.sleep(self.request_delay)
             
             # Enhanced headers to avoid blocking
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Accept-Encoding': 'gzip, deflate, br',
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache',
-                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"macOS"',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'none',
-                'Sec-Fetch-User': '?1',
-                'Upgrade-Insecure-Requests': '1'
+                'Cache-Control': 'no-cache'
             }
             
-            # Get paper metadata from abstract page
+            # Get abstract page
             abs_url = f"https://arxiv.org/abs/{arxiv_id}"
+            response = requests.get(abs_url, headers=headers, timeout=10)
             
-            # Add delay to avoid rate limiting
-            time.sleep(.50)
-            
-            response = requests.get(abs_url, headers=headers, timeout=15)
             if response.status_code == 403:
-                logger.warning(f"403 Forbidden for {arxiv_id} - may be rate limited")
-            elif response.status_code != 200:
-                logger.warning(f"HTTP {response.status_code} for {arxiv_id}")
+                logger.warning(f"Rate limited for {arxiv_id}, waiting...")
+                time.sleep(25)
+                response = requests.get(abs_url, headers=headers, timeout=10)
+            
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             
             # Extract title with multiple fallback strategies
             title = f"Paper {arxiv_id}"  # Default fallback
             
-            # Strategy 1: Look for title in various formats
             title_selectors = [
-                # Standard arXiv title formats
                 ('h1.title', soup.find('h1', class_='title')),
                 ('h1.title.mathjax', soup.find('h1', class_='title mathjax')),
                 ('h1[class*="title"]', soup.find('h1', attrs={'class': re.compile('title', re.I)})),
-                # Meta tag approach
                 ('meta[name="citation_title"]', soup.find('meta', attrs={'name': 'citation_title'})),
                 ('meta[property="og:title"]', soup.find('meta', attrs={'property': 'og:title'})),
-                # Fallback to any h1
                 ('h1', soup.find('h1'))
             ]
             
@@ -818,24 +593,19 @@ class DataExtractor:
                     else:
                         title_text = element.get_text().strip()
                     
-                    if title_text and len(title_text) > 5 and not any(err in title_text.lower() for err in ['error', 'forbidden', 'not found']):
-                        # Clean up the title
+                    if title_text and len(title_text) > 5:
                         title = re.sub(r'^Title:\s*', '', title_text, flags=re.IGNORECASE).strip()
-                        logger.debug(f"Found title via {selector_name}: {title[:50]}...")
                         break
             
             # Extract abstract with multiple fallback strategies
             abstract = ""
             
             abstract_selectors = [
-                # Standard arXiv abstract formats
                 ('blockquote.abstract', soup.find('blockquote', class_='abstract')),
                 ('blockquote.abstract.mathjax', soup.find('blockquote', class_='abstract mathjax')),
                 ('blockquote[class*="abstract"]', soup.find('blockquote', attrs={'class': re.compile('abstract', re.I)})),
-                # Meta tag approach
                 ('meta[name="citation_abstract"]', soup.find('meta', attrs={'name': 'citation_abstract'})),
                 ('meta[name="description"]', soup.find('meta', attrs={'name': 'description'})),
-                # Fallback to any blockquote
                 ('blockquote', soup.find('blockquote'))
             ]
             
@@ -846,25 +616,45 @@ class DataExtractor:
                     else:
                         abstract_text = element.get_text().strip()
                     
-                    if abstract_text and len(abstract_text) > 50 and not any(err in abstract_text.lower() for err in ['error', 'forbidden', 'not found']):
-                        # Clean up the abstract
+                    if abstract_text and len(abstract_text) > 50:
                         abstract = re.sub(r'^Abstract:\s*', '', abstract_text, flags=re.IGNORECASE).strip()
-                        logger.debug(f"Found abstract via {selector_name}: {len(abstract)} chars")
                         break
             
-            # Parse date from arXiv ID
+            # Extract authors
+            authors = self.extract_authors(soup)
+            
+            # Parse date
             year, month = self.parse_arxiv_date(arxiv_id)
             
-            # Initialize sections
+            # Initialize sections with abstract
             sections = {'abstract': abstract}
             references = []
             
-            # Try to get enhanced content from HTML version
-            time.sleep(0.50)  # Another delay before HTML request
+            # Initialize paper data
+            paper_data = {
+                'arxiv_id': arxiv_id,  # Store the actual ID (with version if present)
+                'title': title,
+                'authors': authors,
+                'year': year,
+                'month': month,
+                'paper_url': abs_url,
+                'code_url': '',  # Will be filled for level 1 papers
+                'sections': sections,
+                'references': [],
+                'cited_by': [],
+                'level': level,
+                'platform': [],
+                'appears_in': [],
+                'highlight': '',  # Will be filled for level 1 papers
+                'extraction_status': 'partial'
+            }
             
+            # Try to get HTML version for enhanced content
+            time.sleep(self.request_delay)
             html_url = f"https://arxiv.org/html/{arxiv_id}"
+            
             try:
-                html_response = requests.get(html_url, headers=headers, timeout=15)
+                html_response = requests.get(html_url, headers=headers, timeout=10)
                 if html_response.status_code == 200:
                     html_soup = BeautifulSoup(html_response.text, 'html.parser')
                     
@@ -881,578 +671,386 @@ class DataExtractor:
                         if content:
                             sections[section_name] = content
                     
+                    # Update sections in paper data
+                    paper_data['sections'] = sections
+                    
                     # Extract references
-                    references = self.extract_references(html_soup)
-                    logger.info(f"Found {len(references)} references from HTML")
-                else:
-                    logger.warning(f"HTML version returned {html_response.status_code} for {arxiv_id}")
+                    paper_data['references'] = self.extract_references(html_soup, arxiv_id)
+                    paper_data['extraction_status'] = 'complete'
+                    
+                    # Create combined text for platform/category detection
+                    semantic_parts = []
+                    for section_name in ['abstract', 'introduction', 'related_work', 'methodology', 'conclusion']:
+                        if section_name in sections and sections[section_name]:
+                            semantic_parts.append(sections[section_name])
+                    
+                    combined_text = ' '.join(semantic_parts)
+                    
+                    # Detect platforms and categories from combined text
+                    paper_data['platform'] = self.detect_platforms(combined_text)
+                    paper_data['appears_in'] = self.detect_categories(combined_text)
+                    
+                    logger.info(f"✓ Extracted full content: {len(sections)} sections, {len(paper_data['references'])} refs")
             except Exception as e:
-                logger.warning(f"HTML extraction failed for {arxiv_id}: {e}")
+                logger.debug(f"HTML extraction failed for {arxiv_id}: {e}")
+                # Still use what we have from abstract page
+                paper_data['platform'] = self.detect_platforms(abstract + ' ' + title)
+                paper_data['appears_in'] = self.detect_categories(abstract + ' ' + title)
             
-            # Create combined semantic text (clean, without prefixes)
-            semantic_parts = []
-            for section_name in ['abstract', 'introduction', 'related_work', 'methodology', 'conclusion']:
-                if section_name in sections and sections[section_name]:
-                    semantic_parts.append(sections[section_name])
+            # Mark as processed and add to index (using base ID for deduplication)
+            self.processed_ids.add(arxiv_id_base)
+            self.papers_index[arxiv_id_base] = paper_data
             
-            combined_semantic_text = ' '.join(semantic_parts)
-            
-            # For level 2 and level 3 papers, detect platform and categories from content
-            platform = []
-            appears_in = []
-            
-            if level >= 2:  # Level 2 and Level 3 papers
-                platform = self.detect_platforms_from_content(combined_semantic_text)
-                appears_in = self.detect_categories_from_content(combined_semantic_text)
-            
-            paper_data = {
-                'arxiv_id': arxiv_id,
-                'title': title,
-                'year': year,
-                'month': month,
-                'paper_url': f"https://arxiv.org/abs/{arxiv_id}",
-                'code_url': "",  # Will be empty for level 2 papers
-                'platform': platform,
-                'highlight': "",  # Will be empty for level 2 papers
-                'appears_in': appears_in,
-                'extraction_status': 'complete',
-                'sections': sections,
-                'semantic_text': combined_semantic_text,
-                'references': references,
-                'level': level,
-                'cited_by': cited_by if cited_by else []
-            }
-            
-            logger.info(f"✓ Successfully extracted: {title[:50]}... ({len(references)} refs, {len(sections)} sections)")
+            logger.info(f"✓ Extracted: {title[:50]}... ({len(paper_data['references'])} refs, {len(authors)} authors)")
             return paper_data
             
         except Exception as e:
-            logger.error(f"✗ Failed to extract {arxiv_id} (Level {level}): {type(e).__name__}: {e}")
+            logger.error(f"Failed to extract {arxiv_id}: {e}")
+            self.failed_ids.add(arxiv_id_base)
             return None
 
-    def process_papers(self):
-        """Main processing pipeline"""
-        logger.info("Starting enhanced data extraction pipeline...")
+    def load_papers(self) -> List[Dict]:
+        """Load and deduplicate papers from JSON files."""
+        logger.info("Loading papers from data directory...")
         
-        # Load and deduplicate original papers
-        original_papers = self.load_and_deduplicate_papers()
+        papers_by_url = {}
         
-        # Process level 1 papers (original dataset)
-        logger.info(f"Processing {len(original_papers)} level-1 papers...")
-        level1_processed = []
-        
-        for i, paper in enumerate(original_papers):
-            logger.info(f"[{i+1}/{len(original_papers)}] Processing level-1 paper...")
-            
-            arxiv_id = self.extract_arxiv_id(paper.get('Paper_Url', ''))
-            if not arxiv_id:
-                logger.warning(f"No arXiv ID found for: {paper.get('Name', 'Unknown')}")
+        for filename in os.listdir(self.data_dir):
+            if not filename.endswith('.json'):
                 continue
             
-            if arxiv_id in self.processing_log['processed']:
-                logger.info(f"Already processed: {arxiv_id}")
-                continue
+            filepath = os.path.join(self.data_dir, filename)
+            category = filename.replace('.json', '')
             
-            # Get enhanced data
-            enhanced_data = self.get_paper_data(arxiv_id, level=1)
-            if enhanced_data:
-                # Merge with original data
-                enhanced_data.update({
-                    'code_url': paper.get('Code_Url', ''),
-                    'highlight': paper.get('Highlight', ''),
-                    'platform': self.parse_platform_string(paper.get('Platform', '')),
-                    'appears_in': paper.get('appears_in', [])
-                })
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    papers = json.load(f)
                 
-                level1_processed.append(enhanced_data)
-                self.processing_log['processed'].add(arxiv_id)
+                for paper in papers:
+                    url = paper.get('Paper_Url', '')
+                    if url not in papers_by_url:
+                        paper['appears_in'] = [category]
+                        papers_by_url[url] = paper
+                    else:
+                        papers_by_url[url]['appears_in'].append(category)
                 
-                # NEW: Add to papers index for cross-citation tracking
-                self.add_paper_to_index(enhanced_data)
-            else:
-                self.processing_log['failed'].add(arxiv_id)
-            
-            # Save progress periodically
-            if (i + 1) % 5 == 0:
-                self.save_progress(level1_processed)
-                self.save_reference_cache()
+                logger.info(f"Loaded {len(papers)} papers from {filename}")
+            except Exception as e:
+                logger.error(f"Failed to load {filepath}: {e}")
         
-        # FIXED: Update backward citations after Level-1 processing
-        if level1_processed:
-            self.update_backward_citations(level1_processed)
-        
-        # Collect arXiv references for level 2 processing
-        logger.info("Collecting arXiv references for level-2 processing...")
-        arxiv_references = {}
-        
-        for paper in level1_processed:
-            for ref in paper['references']:
-                if ref['has_arxiv'] and ref['arxiv_id']:
-                    if ref['arxiv_id'] not in arxiv_references:
-                        arxiv_references[ref['arxiv_id']] = {
-                            'title': ref['title'],
-                            'cited_by': []
-                        }
-                    arxiv_references[ref['arxiv_id']]['cited_by'].append(paper['arxiv_id'])
-        
-        logger.info(f"Found {len(arxiv_references)} unique arXiv references for level-2 processing")
-        
-        # Process level 2 papers
-        level2_processed = []
-        for i, (arxiv_id, ref_info) in enumerate(arxiv_references.items()):
-            logger.info(f"[{i+1}/{len(arxiv_references)}] Processing level-2 paper: {arxiv_id}")
-            
-            if arxiv_id in self.processing_log['processed']:
-                # FIXED: Don't skip! Update citation relationships for already processed papers
-                logger.info(f"Already processed: {arxiv_id} - updating citation relationships")
-                self.update_paper_citations(arxiv_id, ref_info['cited_by'])
-                continue
-            
-            enhanced_data = self.get_paper_data(arxiv_id, level=2, cited_by=ref_info['cited_by'])
-            if enhanced_data:
-                level2_processed.append(enhanced_data)
-                self.processing_log['processed'].add(arxiv_id)
-                
-                # NEW: Add to papers index for cross-citation tracking
-                self.add_paper_to_index(enhanced_data)
-            else:
-                self.processing_log['failed'].add(arxiv_id)
-            
-            # Save progress periodically
-            if (i + 1) % 10 == 0:
-                self.save_progress(level1_processed + level2_processed)
-                self.save_reference_cache()
-        
-        # FIXED: Update backward citations after Level-2 processing
-        if level2_processed:
-            self.update_backward_citations(level2_processed)
-        
-        # Collect arXiv references for level 3 processing
-        logger.info("Collecting arXiv references for level-3 processing...")
-        level3_arxiv_references = {}
-        
-        # FIXED: Collect Level-3 candidates from BOTH Level-1 AND Level-2 papers
-        all_citing_papers = level1_processed + level2_processed
-        
-        for paper in all_citing_papers:
-            for ref in paper['references']:
-                if ref['has_arxiv'] and ref['arxiv_id']:
-                    # Skip if already processed as Level-1 or Level-2
-                    if ref['arxiv_id'] not in self.processing_log['processed']:
-                        if ref['arxiv_id'] not in level3_arxiv_references:
-                            level3_arxiv_references[ref['arxiv_id']] = {
-                                'title': ref['title'],
-                                'cited_by': []
-                            }
-                        level3_arxiv_references[ref['arxiv_id']]['cited_by'].append(paper['arxiv_id'])
-        
-        logger.info(f"Found {len(level3_arxiv_references)} unique arXiv references for level-3 processing")
-        logger.info(f"  - Collected from {len(level1_processed)} Level-1 papers and {len(level2_processed)} Level-2 papers")
-        
-        # Process level 3 papers
-        level3_processed = []
-        for i, (arxiv_id, ref_info) in enumerate(level3_arxiv_references.items()):
-            logger.info(f"[{i+1}/{len(level3_arxiv_references)}] Processing level-3 paper: {arxiv_id}")
-            
-            if arxiv_id in self.processing_log['processed']:
-                # FIXED: Don't skip! Update citation relationships for already processed papers
-                logger.info(f"Already processed: {arxiv_id} - updating citation relationships")
-                self.update_paper_citations(arxiv_id, ref_info['cited_by'])
-                continue
-            
-            enhanced_data = self.get_paper_data(arxiv_id, level=3, cited_by=ref_info['cited_by'])
-            if enhanced_data:
-                level3_processed.append(enhanced_data)
-                self.processing_log['processed'].add(arxiv_id)
-                
-                # NEW: Add to papers index for cross-citation tracking
-                self.add_paper_to_index(enhanced_data)
-            else:
-                self.processing_log['failed'].add(arxiv_id)
-            
-            # Save progress periodically
-            if (i + 1) % 20 == 0:
-                self.save_progress(level1_processed + level2_processed + level3_processed)
-                self.save_reference_cache()
-        
-        # FIXED: Update backward citations after Level-3 processing
-        if level3_processed:
-            self.update_backward_citations(level3_processed)
-        
-        # Combine all processed papers
-        all_processed = level1_processed + level2_processed + level3_processed
-        
-        # IMPORTANT: Get the final list of papers from the index to ensure all citation updates are included
-        final_papers_list = self.get_all_papers_from_index()
-        
-        # Final save
-        self.save_final_results(final_papers_list)
-        self.save_reference_cache()
-        
-        logger.info(f"Completed processing: {len(level1_processed)} level-1, {len(level2_processed)} level-2, {len(level3_processed)} level-3 papers")
-        
-        return final_papers_list
+        papers = list(papers_by_url.values())
+        logger.info(f"Total unique papers: {len(papers)}")
+        return papers
 
-    def process_paper_parallel(self, paper_info):
-        """Process a single paper (for parallel execution)"""
-        paper, level, cited_by = paper_info
+    def update_backward_citations(self, newly_processed_papers: List[Dict]) -> int:
+        """Update backward citation relationships after processing a batch of papers."""
+        logger.info(f"Updating backward citations for {len(newly_processed_papers)} newly processed papers...")
         
-        if level == 1:
-            arxiv_id = self.extract_arxiv_id(paper.get('Paper_Url', ''))
-            if not arxiv_id:
-                logger.warning(f"No arXiv ID found for: {paper.get('Name', 'Unknown')}")
-                return None
+        updates_made = 0
+        
+        for citing_paper in newly_processed_papers:
+            citing_id = citing_paper.get('arxiv_id')
+            if not citing_id:
+                continue
             
-            # Check if already processed
-            with self.processing_lock:
-                if arxiv_id in self.processing_log['processed']:
-                    logger.info(f"Already processed: {arxiv_id}")
-                    return None
-                
-                # Mark as being processed
-                self.processing_log['processed'].add(arxiv_id)
-            
-            # Get enhanced data
-            enhanced_data = self.get_paper_data(arxiv_id, level=1)
-            if enhanced_data:
-                # Merge with original data
-                enhanced_data.update({
-                    'code_url': paper.get('Code_Url', ''),
-                    'highlight': paper.get('Highlight', ''),
-                    'platform': self.parse_platform_string(paper.get('Platform', '')),
-                    'appears_in': paper.get('appears_in', [])
-                })
-                
-                # NEW: Add to papers index for cross-citation tracking
-                self.add_paper_to_index(enhanced_data)
-                return enhanced_data
-            else:
-                with self.processing_lock:
-                    self.processing_log['failed'].add(arxiv_id)
-                return None
-                
-        else:  # level == 2 or level == 3
-            arxiv_id = paper  # For level 2/3, paper is just the arxiv_id
-            
-            # Check if already processed
-            with self.processing_lock:
-                if arxiv_id in self.processing_log['processed']:
-                    logger.info(f"Already processed (Level {level}): {arxiv_id} - updating citation relationships")
-                    # FIXED: Don't return None! Update citation relationships
-                    self.update_paper_citations(arxiv_id, cited_by)
-                    return None  # Still return None to indicate no new paper was created
-                
-                # Mark as being processed
-                self.processing_log['processed'].add(arxiv_id)
-            
-            enhanced_data = self.get_paper_data(arxiv_id, level=level, cited_by=cited_by)
-            if enhanced_data:
-                # NEW: Add to papers index for cross-citation tracking
-                self.add_paper_to_index(enhanced_data)
-                logger.debug(f"Successfully extracted Level {level} paper: {arxiv_id}")
-                return enhanced_data
-            else:
-                with self.processing_lock:
-                    self.processing_log['failed'].add(arxiv_id)
-                logger.warning(f"Failed to extract Level {level} paper: {arxiv_id}")
-                return None
+            # For each reference in this paper
+            for ref in citing_paper.get('references', []):
+                if ref.get('has_arxiv') and ref.get('arxiv_id'):
+                    cited_arxiv_id = self.get_arxiv_base_id(ref['arxiv_id'])  # Use base ID for lookup
+                    
+                    # Check if the cited paper is already in our index (processed)
+                    if cited_arxiv_id in self.papers_index:
+                        cited_paper = self.papers_index[cited_arxiv_id]
+                        
+                        # Initialize cited_by if not present
+                        if 'cited_by' not in cited_paper:
+                            cited_paper['cited_by'] = []
+                        
+                        # Add the citing paper if not already there
+                        if citing_id not in cited_paper['cited_by']:
+                            cited_paper['cited_by'].append(citing_id)
+                            updates_made += 1
+                            logger.debug(f"Added backward citation: {cited_arxiv_id} ← {citing_id}")
+        
+        logger.info(f"✓ Updated {updates_made} backward citation relationships")
+        return updates_made
 
-    def process_papers_parallel(self, max_workers=4):
-        """Main processing pipeline with parallel execution"""
-        logger.info("Starting enhanced data extraction pipeline (parallel)...")
+    def update_citations(self):
+        """Update all citation relationships - comprehensive version."""
+        logger.info("Updating all citation relationships...")
+        updates = 0
         
-        # Load and deduplicate papers
-        papers = self.load_and_deduplicate_papers()
+        # First pass: update forward citations and collect all relationships
+        for paper in self.papers_index.values():
+            citing_id = paper.get('arxiv_id')
+            if not citing_id:
+                continue  # Skip papers without arxiv_id (like Rico/ERICA)
+            
+            for ref in paper.get('references', []):
+                if ref.get('has_arxiv') and ref['arxiv_id']:
+                    cited_id = self.get_arxiv_base_id(ref['arxiv_id'])  # Use base ID for lookup
+                    
+                    # Update backward citation if cited paper is in our index
+                    if cited_id in self.papers_index:
+                        cited_paper = self.papers_index[cited_id]
+                        if 'cited_by' not in cited_paper:
+                            cited_paper['cited_by'] = []
+                        
+                        if citing_id not in cited_paper['cited_by']:
+                            cited_paper['cited_by'].append(citing_id)
+                            updates += 1
         
-        # Process level 1 papers in parallel
-        logger.info(f"Processing {len(papers)} level-1 papers with {max_workers} workers...")
+        # Special handling for Rico and ERICA papers
+        for special_key in ['rico_2017', 'erica_2016']:
+            if special_key in self.papers_index:
+                special_paper = self.papers_index[special_key]
+                if 'cited_by' not in special_paper:
+                    special_paper['cited_by'] = []
+                
+                # Get citations from the SPECIAL_PAPERS data
+                paper_type = special_key.split('_')[0]
+                if paper_type in SPECIAL_PAPERS:
+                    special_citations = SPECIAL_PAPERS[paper_type]['cited_by']
+                    for citing_id in special_citations:
+                        if citing_id not in special_paper['cited_by']:
+                            special_paper['cited_by'].append(citing_id)
+                            updates += 1
+        
+        logger.info(f"Updated {updates} total citation relationships")
+
+    def process_papers(self, max_workers: int = 4) -> List[Dict]:
+        """Main processing pipeline - simplified and unified."""
+        logger.info("Starting data extraction pipeline...")
+        start_time = time.time()
+        
+        # Load original papers
+        original_papers = self.load_papers()
+        
+        # Add special papers (Rico and ERICA) to index
+        for paper_key, paper_data in SPECIAL_PAPERS.items():
+            special_paper = paper_data.copy()
+            special_paper['arxiv_id'] = None
+            special_paper['level'] = 1  # Special level for external papers
+            special_paper['references'] = []
+            special_paper['extraction_status'] = 'external'
+            special_paper['paper_url'] = ''
+            special_paper['code_url'] = ''
+            special_paper['authors'] = []
+            special_paper['highlight'] = ''
+            special_paper['appears_in'] = ['dataset'] if paper_key == 'rico' else ['models']
+            self.papers_index[f'{paper_key}_{special_paper["year"]}'] = special_paper
+        
+        # Process Level 1 papers
+        logger.info(f"Processing {len(original_papers)} Level-1 papers...")
+        
+        level1_refs = defaultdict(list)  # arxiv_id -> citing_papers
         level1_processed = []
-        
-        paper_infos = [(paper, 1, None) for paper in papers]
         
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all tasks
-            future_to_paper = {executor.submit(self.process_paper_parallel, paper_info): paper_info 
-                              for paper_info in paper_infos}
+            futures = []
             
-            # Process completed tasks
-            completed = 0
-            for future in as_completed(future_to_paper):
-                completed += 1
-                paper_info = future_to_paper[future]
-                
+            for paper in original_papers:
+                arxiv_id = self.extract_arxiv_id(paper.get('Paper_Url', ''))
+                if arxiv_id:
+                    future = executor.submit(self.fetch_arxiv_paper, arxiv_id, 1)
+                    futures.append((future, paper, arxiv_id))
+            
+            for i, (future, orig_paper, arxiv_id) in enumerate(futures):
                 try:
                     result = future.result()
-                    paper_info = future_to_paper[future]
-                    paper = paper_info[0]  # paper_info is (paper, level, cited_by)
-                    arxiv_id = self.extract_arxiv_id(paper.get('Paper_Url', ''))
-                    paper_name = paper.get('Name', 'Unknown')
-                    
                     if result:
-                        level1_processed.append(result)
-                        logger.info(f"[{completed}/{len(papers)}] ✓ Level-1: {result['title'][:50]}... ({arxiv_id})")
-                    else:
-                        # Check why it failed/was skipped
-                        if not arxiv_id:
-                            reason = f"no arXiv ID found in {paper.get('Paper_Url', 'N/A')}"
-                        else:
-                            with self.processing_lock:
-                                if arxiv_id in self.processing_log['processed']:
-                                    reason = "already processed"
-                                elif arxiv_id in self.processing_log['failed']:
-                                    reason = "extraction failed"
-                                else:
-                                    reason = "unknown reason"
-                        logger.info(f"[{completed}/{len(papers)}] ✗ Level-1 {reason}: {paper_name} ({arxiv_id or 'no ID'})")
+                        # Merge with original data - ensure all fields are preserved
+                        result['code_url'] = orig_paper.get('Code_Url', '')
+                        result['highlight'] = orig_paper.get('Highlight', '')
                         
+                        # For appears_in, merge with detected categories
+                        original_appears_in = orig_paper.get('appears_in', [])
+                        if original_appears_in:
+                            result['appears_in'] = list(set(result.get('appears_in', []) + original_appears_in))
+                        
+                        # For platform, prefer original if available, otherwise use detected
+                        original_platform = orig_paper.get('Platform', '')
+                        if original_platform:
+                            # Parse the platform string from original data
+                            parsed_platforms = []
+                            for p in original_platform.split(','):
+                                p = p.strip()
+                                if p:
+                                    parsed_platforms.append(p)
+                            if parsed_platforms:
+                                result['platform'] = list(set(parsed_platforms + result.get('platform', [])))
+                        
+                        level1_processed.append(result)
+                        
+                        # Collect Level-2 candidates
+                        for ref in result['references']:
+                            if ref.get('has_arxiv') and ref['arxiv_id']:
+                                level1_refs[ref['arxiv_id']].append(arxiv_id)
+                    
                     # Save progress periodically
-                    if completed % 10 == 0:
-                        self.save_progress(level1_processed)
-                        self.save_reference_cache()
+                    if (i + 1) % 20 == 0:
+                        self.save_progress()
+                        self.save_cache()
+                        logger.info(f"Progress: {i+1}/{len(futures)} Level-1 papers")
                         
                 except Exception as e:
-                        paper_info = future_to_paper[future]
-                        paper = paper_info[0]
-                        paper_name = paper.get('Name', 'Unknown')
-                        logger.error(f"Error processing Level-1 paper {paper_name}: {e}")
+                    logger.error(f"Error processing {arxiv_id}: {e}")
         
-        # FIXED: Update backward citations after Level-1 processing
+        # Update backward citations after Level-1 processing
         if level1_processed:
             self.update_backward_citations(level1_processed)
         
-        # Collect arXiv references for level 2 processing
-        logger.info("Collecting arXiv references for level-2 processing...")
-        arxiv_references = {}
+        # Process Level 2 papers
+        logger.info(f"Processing {len(level1_refs)} Level-2 papers...")
         
-        for paper in level1_processed:
-            for ref in paper['references']:
-                if ref['has_arxiv'] and ref['arxiv_id']:
-                    if ref['arxiv_id'] not in arxiv_references:
-                        arxiv_references[ref['arxiv_id']] = {
-                            'title': ref['title'],
-                            'cited_by': []
-                        }
-                    arxiv_references[ref['arxiv_id']]['cited_by'].append(paper['arxiv_id'])
-        
-        logger.info(f"Found {len(arxiv_references)} unique arXiv references for level-2 processing")
-        
-        # Process level 2 papers in parallel
+        level2_refs = defaultdict(list)
         level2_processed = []
         
-        if arxiv_references:
-            paper_infos_l2 = [(arxiv_id, 2, ref_info['cited_by']) 
-                             for arxiv_id, ref_info in arxiv_references.items()]
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
             
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                # Submit all level-2 tasks
-                future_to_paper = {executor.submit(self.process_paper_parallel, paper_info): paper_info 
-                                  for paper_info in paper_infos_l2}
-                
-                # Process completed tasks
-                completed = 0
-                for future in as_completed(future_to_paper):
-                    completed += 1
-                    paper_info = future_to_paper[future]
-                    
-                    try:
-                        result = future.result()
-                        paper_info = future_to_paper[future]
-                        arxiv_id = paper_info[0]  # paper_info is (arxiv_id, level, cited_by)
+            for arxiv_id, citing_papers in level1_refs.items():
+                if self.get_arxiv_base_id(arxiv_id) not in self.processed_ids:
+                    future = executor.submit(self.fetch_arxiv_paper, arxiv_id, 2)
+                    futures.append((future, arxiv_id, citing_papers))
+                else:
+                    # Update citation relationships for already processed papers
+                    base_id = self.get_arxiv_base_id(arxiv_id)
+                    if base_id in self.papers_index:
+                        existing_paper = self.papers_index[base_id]
+                        if 'cited_by' not in existing_paper:
+                            existing_paper['cited_by'] = []
+                        for citing_id in citing_papers:
+                            if citing_id not in existing_paper['cited_by']:
+                                existing_paper['cited_by'].append(citing_id)
+            
+            for i, (future, arxiv_id, citing_papers) in enumerate(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        result['cited_by'] = citing_papers
+                        level2_processed.append(result)
                         
-                        if result:
-                            level2_processed.append(result)
-                            logger.info(f"[{completed}/{len(arxiv_references)}] ✓ Level-2: {result['title'][:50]}... ({arxiv_id})")
-                        else:
-                            # Check why it failed/was skipped
-                            with self.processing_lock:
-                                if arxiv_id in self.processing_log['processed']:
-                                    reason = "already processed"
-                                elif arxiv_id in self.processing_log['failed']:
-                                    reason = "extraction failed"
-                                else:
-                                    reason = "unknown reason"
-                            logger.info(f"[{completed}/{len(arxiv_references)}] ✗ Level-2 {reason}: {arxiv_id}")
-                            
-                        # Save progress periodically
-                        if completed % 20 == 0:
-                            self.save_progress(level1_processed + level2_processed)
-                            self.save_reference_cache()
-                            
-                    except Exception as e:
-                        paper_info = future_to_paper[future]
-                        arxiv_id = paper_info[0]
-                        logger.error(f"Error processing level-2 paper {arxiv_id}: {e}")
+                        # Collect Level-3 candidates
+                        for ref in result['references']:
+                            if ref.get('has_arxiv') and ref['arxiv_id']:
+                                level2_refs[ref['arxiv_id']].append(arxiv_id)
+                    
+                    # Save progress periodically
+                    if (i + 1) % 50 == 0:
+                        self.save_progress()
+                        self.save_cache()
+                        logger.info(f"Progress: {i+1}/{len(futures)} Level-2 papers")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing L2 {arxiv_id}: {e}")
         
-        # FIXED: Update backward citations after Level-2 processing
+        # Update backward citations after Level-2 processing
         if level2_processed:
             self.update_backward_citations(level2_processed)
         
-        # Collect arXiv references for level 3 processing
-        logger.info("Collecting arXiv references for level-3 processing...")
-        level3_arxiv_references = {}
+        # Process Level 3 papers
+        logger.info(f"Processing {len(level2_refs)} Level-3 papers...")
         
-        # FIXED: Collect Level-3 candidates from BOTH Level-1 AND Level-2 papers
-        all_citing_papers = level1_processed + level2_processed
-        
-        for paper in all_citing_papers:
-            for ref in paper['references']:
-                if ref['has_arxiv'] and ref['arxiv_id']:
-                    # Skip if already processed as Level-1 or Level-2
-                    if ref['arxiv_id'] not in self.processing_log['processed']:
-                        if ref['arxiv_id'] not in level3_arxiv_references:
-                            level3_arxiv_references[ref['arxiv_id']] = {
-                                'title': ref['title'],
-                                'cited_by': []
-                            }
-                        level3_arxiv_references[ref['arxiv_id']]['cited_by'].append(paper['arxiv_id'])
-        
-        logger.info(f"Found {len(level3_arxiv_references)} unique arXiv references for level-3 processing")
-        logger.info(f"  - Collected from {len(level1_processed)} Level-1 papers and {len(level2_processed)} Level-2 papers")
-        
-        # Process level 3 papers in parallel
         level3_processed = []
+        level3_candidates = dict(list(level2_refs.items()))
         
-        if level3_arxiv_references:
-            paper_infos_l3 = [(arxiv_id, 3, ref_info['cited_by']) 
-                             for arxiv_id, ref_info in level3_arxiv_references.items()]
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
             
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                # Submit all level-3 tasks
-                future_to_paper = {executor.submit(self.process_paper_parallel, paper_info): paper_info 
-                                  for paper_info in paper_infos_l3}
-                
-                # Process completed tasks
-                completed = 0
-                for future in as_completed(future_to_paper):
-                    completed += 1
-                    paper_info = future_to_paper[future]
+            for arxiv_id, citing_papers in level3_candidates.items():
+                if self.get_arxiv_base_id(arxiv_id) not in self.processed_ids:
+                    future = executor.submit(self.fetch_arxiv_paper, arxiv_id, 3)
+                    futures.append((future, arxiv_id, citing_papers))
+                else:
+                    # Update citation relationships for already processed papers
+                    base_id = self.get_arxiv_base_id(arxiv_id)
+                    if base_id in self.papers_index:
+                        existing_paper = self.papers_index[base_id]
+                        if 'cited_by' not in existing_paper:
+                            existing_paper['cited_by'] = []
+                        for citing_id in citing_papers:
+                            if citing_id not in existing_paper['cited_by']:
+                                existing_paper['cited_by'].append(citing_id)
+            
+            for i, (future, arxiv_id, citing_papers) in enumerate(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        result['cited_by'] = citing_papers
+                        level3_processed.append(result)
                     
-                    try:
-                        result = future.result()
-                        paper_info = future_to_paper[future]
-                        arxiv_id = paper_info[0]  # paper_info is (arxiv_id, level, cited_by)
+                    # Save progress periodically
+                    if (i + 1) % 100 == 0:
+                        self.save_progress()
+                        self.save_cache()
+                        logger.info(f"Progress: {i+1}/{len(futures)} Level-3 papers")
                         
-                        if result:
-                            level3_processed.append(result)
-                            logger.info(f"[{completed}/{len(level3_arxiv_references)}] ✓ Level-3: {result['title'][:50]}... ({arxiv_id})")
-                        else:
-                            # Check why it failed/was skipped
-                            with self.processing_lock:
-                                if arxiv_id in self.processing_log['processed']:
-                                    reason = "already processed"
-                                elif arxiv_id in self.processing_log['failed']:
-                                    reason = "extraction failed"
-                                else:
-                                    reason = "unknown reason"
-                            logger.info(f"[{completed}/{len(level3_arxiv_references)}] ✗ Level-3 {reason}: {arxiv_id}")
-                            
-                        # Save progress periodically
-                        if completed % 50 == 0:
-                            self.save_progress(level1_processed + level2_processed + level3_processed)
-                            self.save_reference_cache()
-                            
-                    except Exception as e:
-                        paper_info = future_to_paper[future]
-                        arxiv_id = paper_info[0]
-                        logger.error(f"Error processing level-3 paper {arxiv_id}: {e}")
+                except Exception as e:
+                    logger.error(f"Error processing L3 {arxiv_id}: {e}")
         
-        # FIXED: Update backward citations after Level-3 processing
+        # Update backward citations after Level-3 processing
         if level3_processed:
             self.update_backward_citations(level3_processed)
         
-        # Combine all processed papers
-        all_processed = level1_processed + level2_processed + level3_processed
+        # Update all citation relationships
+        self.update_citations()
         
-        # IMPORTANT: Get the final list of papers from the index to ensure all citation updates are included
-        final_papers_list = self.get_all_papers_from_index()
+        # Get final results
+        final_papers = list(self.papers_index.values())
         
-        # Final save
-        self.save_final_results(final_papers_list)
-        self.save_reference_cache()
-        
-        logger.info(f"Completed processing: {len(level1_processed)} level-1, {len(level2_processed)} level-2, {len(level3_processed)} level-3 papers")
-        logger.info(f"Final output contains: {len(final_papers_list)} papers with updated citation relationships")
-        
-        return final_papers_list
-
-    def save_progress(self, papers):
-        """Save progress to avoid losing work"""
-        temp_file = f"temp_{self.output_file}"
-        with open(temp_file, 'w', encoding='utf-8') as f:
-            json.dump(papers, f, indent=2, ensure_ascii=False)
-        logger.info(f"Progress saved to {temp_file}")
-
-    def save_final_results(self, papers):
-        """Save final results"""
+        # Save final results
         with open(self.output_file, 'w', encoding='utf-8') as f:
-            json.dump(papers, f, indent=2, ensure_ascii=False)
+            json.dump(final_papers, f, indent=2, ensure_ascii=False)
         
-        # Save processing log
-        log_file = self.output_file.replace('.json', '_log.json')
-        log_data = {
-            'processed_count': len(self.processing_log['processed']),
-            'failed_count': len(self.processing_log['failed']),
-            'processed_papers': list(self.processing_log['processed']),
-            'failed_papers': list(self.processing_log['failed'])
-        }
+        # Save cache
+        self.save_cache()
         
-        with open(log_file, 'w', encoding='utf-8') as f:
-            json.dump(log_data, f, indent=2)
+        # Log statistics
+        elapsed = time.time() - start_time
+        rico_citations = len(SPECIAL_PAPERS['rico']['cited_by'])
+        erica_citations = len(SPECIAL_PAPERS['erica']['cited_by'])
         
-        logger.info(f"✓ Final results saved to {self.output_file}")
-        logger.info(f"✓ Processing log saved to {log_file}")
-        logger.info(f"✓ Successfully processed {len(papers)} papers total")
-        logger.info(f"  - Level 1 papers: {len([p for p in papers if p['level'] == 1])}")
-        logger.info(f"  - Level 2 papers: {len([p for p in papers if p['level'] == 2])}")
-        logger.info(f"  - Level 3 papers: {len([p for p in papers if p['level'] == 3])}")
+        logger.info(f"""
+        ========== Extraction Complete ==========
+        Total papers: {len(final_papers)}
+        - Level 0 (external): {len([p for p in final_papers if p.get('level') == 0])}
+        - Level 1: {len([p for p in final_papers if p['level'] == 1])}
+        - Level 2: {len([p for p in final_papers if p['level'] == 2])}
+        - Level 3: {len([p for p in final_papers if p['level'] == 3])}
+        
+        Special paper citations:
+        - Rico citations found: {rico_citations}
+        - ERICA citations found: {erica_citations}
+        - Total special citations: {rico_citations + erica_citations}
+        
+        Performance:
+        - API calls: {self.stats['api_calls']}
+        - Cache hits: {self.stats['cache_hits']}
+        - Time elapsed: {elapsed:.1f}s
+        - Papers/minute: {len(final_papers) * 60 / elapsed:.1f}
+        
+        Output: {self.output_file}
+        ========================================
+        """)
+        
+        return final_papers
 
 
 def main():
-    """Run the enhanced data extraction"""
+    """Run the enhanced data extraction."""
     parser = argparse.ArgumentParser(
-        description="📄 Enhanced Data Extractor for LLM-Powered GUI Agents Research",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python data_extractor.py
-  python data_extractor.py --parallel
-  python data_extractor.py --parallel --workers 8
-  python data_extractor.py --data-dir custom_data --output custom_output.json
-  python data_extractor.py --parallel --delay 0.5 --workers 2
-        """
+        description="Enhanced Data Extractor for Research Papers"
     )
     
-    parser.add_argument(
-        '--parallel',
-        action='store_true',
-        help='Run in parallel mode (faster but more concurrent requests to arXiv)'
-    )
-    
-    parser.add_argument(
-        '--workers',
-        type=int,
-        default=4,
-        help='Number of parallel workers (default: %(default)s, only used with --parallel)'
-    )
-    
-    parser.add_argument(
-        '--data-dir',
-        default='data',
-        help='Directory containing input JSON files (default: %(default)s)'
-    )
-    
-    parser.add_argument(
-        '--output',
-        default='processed_papers.json',
-        help='Output JSON file name (default: %(default)s)'
-    )
-    
-    parser.add_argument(
-        '--delay',
-        type=float,
-        default=0.25,
-        help='Request delay in seconds (default: %(default)s)'
-    )
+    parser.add_argument('--workers', type=int, default=4,
+                       help='Number of parallel workers (default: 4)')
+    parser.add_argument('--data-dir', default='data',
+                       help='Directory containing input JSON files')
+    parser.add_argument('--output', default='processed_papers.json',
+                       help='Output JSON file name')
+    parser.add_argument('--delay', type=float, default=0.1,
+                       help='Request delay in seconds')
     
     args = parser.parse_args()
     
@@ -1463,30 +1061,16 @@ Examples:
     )
     
     try:
-        if args.parallel:
-            print(f"Running in PARALLEL mode with {args.workers} workers...")
-            print("This will be much faster but will make more concurrent requests to arXiv")
-            processed_papers = extractor.process_papers_parallel(max_workers=args.workers)
-        else:
-            print("Running in SEQUENTIAL mode...")
-            print("Use --parallel flag for faster processing")
-            processed_papers = extractor.process_papers()
-            
-        print(f"\n{'='*60}")
-        print("EXTRACTION COMPLETE!")
-        print(f"{'='*60}")
-        print(f"Total papers processed: {len(processed_papers)}")
-        print(f"Level 1 papers: {len([p for p in processed_papers if p['level'] == 1])}")
-        print(f"Level 2 papers: {len([p for p in processed_papers if p['level'] == 2])}")
-        print(f"Level 3 papers: {len([p for p in processed_papers if p['level'] == 3])}")
-        print(f"Output saved to: {extractor.output_file}")
-        print(f"Reference cache: {len(extractor.reference_cache)} entries")
+        processed_papers = extractor.process_papers(max_workers=args.workers)
+        print(f"\n✓ Successfully processed {len(processed_papers)} papers")
+        print(f"✓ Output saved to: {args.output}")
         
     except KeyboardInterrupt:
         print("\nExtraction interrupted. Progress has been saved.")
     except Exception as e:
         print(f"Extraction failed: {e}")
         logger.error(f"Extraction failed: {e}", exc_info=True)
+
 
 if __name__ == "__main__":
     main()
