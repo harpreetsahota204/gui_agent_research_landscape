@@ -31,7 +31,7 @@ class Logger:
                 except Exception as e:
                     print(f"Warning: Could not write to log file: {e}")
 
-class GPUOptimizedAnalyzer:
+class PaperAnalyzer:
     def __init__(self, model_name="Qwen/Qwen3-4B-Thinking-2507", logger=None, batch_size=4):
         """Initialize with GPU optimizations"""
         self.logger = logger or Logger()
@@ -57,7 +57,7 @@ class GPUOptimizedAnalyzer:
         
     def _load_model_optimized(self):
         """Load model with GPU optimizations"""
-        # Use fp16 for memory efficiency if supported
+        # Use bfloat16 for memory efficiency if supported
         torch_dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
         
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
@@ -321,7 +321,7 @@ def analyze_papers_gpu_optimized(input_file, output_file, batch_size=4, model_na
     logger.log(f"Using batch size: {batch_size}")
     
     # Initialize analyzer
-    analyzer = GPUOptimizedAnalyzer(model_name=model_name, logger=logger, batch_size=batch_size)
+    analyzer = PaperAnalyzer(model_name=model_name, logger=logger, batch_size=batch_size)
     
     # Load checkpoint if exists
     checkpoint_file = f"{os.path.splitext(output_file)[0]}_checkpoint.json"
