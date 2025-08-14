@@ -31,7 +31,7 @@ GUI_OS_VISUAL_AGENT_KEYWORDS = [
     "gui agent", "gui agents", "visual gui agent", "visual gui agents", "gui", "ui", 
     "user interface", "user interface agent", "user interface agents", "graphical user interface", "graphical user interface agent", "graphical user interface agents",
     "computer using agent", "computer using agent", "os agent", "os agents","operating system agent", "operating system agents",
-    "visual agent", "visual agents", "screen agent", "desktop agent", "mobile ui", "ui agent", "ui agents", "ocr", "embodied agents", "embodied agent", "embodied",
+    "visual agent", "visual agents", "screen agent", "desktop agent", "mobile ui", "ui agent", "ui agents", "embodied agents", "embodied agent", "embodied",
     
     # GUI-Specific Technical Terms 
     "gui grounding", "gui automation", "gui control", "gui interaction",
@@ -55,7 +55,7 @@ GUI_OS_VISUAL_AGENT_KEYWORDS = [
     
     # Research (very specific to field)
     "gpt 4 technical report","webarena", "miniwob", "mind2web", "omniact", "screenqa",
-    "rico dataset", "windowsagentarena", "osworld", "screenspot",
+    "rico dataset", "windowsagentarena", "osworld", "screenspot", "erica", "rico",
     "mobile3m", "pixelweb", "webvoyager", "screenspot", "guicourse", "groundui", "showui",
     
     # Action Planning for GUI (distinguishes from general planning)
