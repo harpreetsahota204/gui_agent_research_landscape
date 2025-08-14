@@ -18,7 +18,7 @@ import threading
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-class EnhancedDataExtractor:
+class DataExtractor:
     def __init__(self, data_dir="data", output_file="processed_papers.json", request_delay=0.1):
         self.data_dir = data_dir
         self.output_file = output_file
@@ -106,7 +106,8 @@ class EnhancedDataExtractor:
             r'arxiv\.org/abs/(\d+\.\d+)',
             r'arxiv\.org/pdf/(\d+\.\d+)',
             r'arxiv\.org/html/(\d+\.\d+)',
-            r'arXiv:(\d+\.\d+)'
+            r'arXiv:(\d+\.\d+)',
+            r'arxiv\.org/abs/(\d+\.\d+)(?:v\d+)?'
         ]
         
         for pattern in patterns:
@@ -1448,7 +1449,7 @@ Examples:
     
     args = parser.parse_args()
     
-    extractor = EnhancedDataExtractor(
+    extractor = DataExtractor(
         data_dir=args.data_dir,
         output_file=args.output,
         request_delay=args.delay
