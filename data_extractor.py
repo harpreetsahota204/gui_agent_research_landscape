@@ -18,7 +18,7 @@ import threading
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-class EnhancedDataExtractor:
+class DataExtractor:
     def __init__(self, data_dir="data", output_file="processed_papers.json", request_delay=0.1):
         self.data_dir = data_dir
         self.output_file = output_file
@@ -97,20 +97,29 @@ class EnhancedDataExtractor:
         return list(deduplicated.values())
 
     def extract_arxiv_id(self, url):
-        """Extract arXiv ID from URL"""
+        """Extract arXiv ID from URL - handles all possible formats by normalizing to lowercase first"""
         if not url:
             return None
         
-        # Common arXiv URL patterns
+        # Normalize to lowercase to handle all case variations
+        url_lower = url.lower()
+        
+        # Comprehensive arXiv URL patterns for all possible formats
         patterns = [
-            r'arxiv\.org/abs/(\d+\.\d+)',
-            r'arxiv\.org/pdf/(\d+\.\d+)',
-            r'arxiv\.org/html/(\d+\.\d+)',
-            r'arXiv:(\d+\.\d+)'
+            # New format (post-2007): YYMM.NNNNN with optional version
+            r'(?:https?://)?(?:www\.)?arxiv\.org/abs/(\d{4}\.\d{4,5})(?:v\d+)?/?(?:\?.*)?',
+            r'(?:https?://)?(?:www\.)?arxiv\.org/pdf/(\d{4}\.\d{4,5})(?:\.pdf)?(?:v\d+)?/?(?:\?.*)?',
+            r'(?:https?://)?(?:www\.)?arxiv\.org/html/(\d{4}\.\d{4,5})(?:v\d+)?/?(?:\?.*)?',
+            # Old format (pre-2007): subject-class/YYMMnnn
+            r'(?:https?://)?(?:www\.)?arxiv\.org/abs/([a-z-]+(?:\.[a-z]{2})?/\d{7})(?:v\d+)?/?(?:\?.*)?',
+            r'(?:https?://)?(?:www\.)?arxiv\.org/pdf/([a-z-]+(?:\.[a-z]{2})?/\d{7})(?:\.pdf)?(?:v\d+)?/?(?:\?.*)?',
+            # Citation formats
+            r'arxiv:(\d{4}\.\d{4,5})(?:v\d+)?',
+            r'arxiv:([a-z-]+(?:\.[a-z]{2})?/\d{7})(?:v\d+)?',
         ]
         
         for pattern in patterns:
-            match = re.search(pattern, url)
+            match = re.search(pattern, url_lower)
             if match:
                 return match.group(1)
         
@@ -1448,7 +1457,7 @@ Examples:
     
     args = parser.parse_args()
     
-    extractor = EnhancedDataExtractor(
+    extractor = DataExtractor(
         data_dir=args.data_dir,
         output_file=args.output,
         request_delay=args.delay
