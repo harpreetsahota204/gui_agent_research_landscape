@@ -25,62 +25,135 @@ class Logger:
             except Exception as e:
                 print(f"Warning: Could not write to log file: {e}")
 
-# Essential Visual/GUI/OS Agent Keywords - Optimized for Low False Positives & High Coverage
-GUI_OS_VISUAL_AGENT_KEYWORDS = [
-    # Core Agent Types (highest priority - very specific to the field)
-    "gui agent", "gui agents", "visual gui agent", "visual gui agents", "gui", "ui", 
-    "user interface", "user interface agent", "user interface agents", "graphical user interface", "graphical user interface agent", "graphical user interface agents",
-    "computer using agent", "computer using agent", "os agent", "os agents","operating system agent", "operating system agents",
-    "visual agent", "visual agents", "screen agent", "desktop agent", "mobile ui", "ui agent", "ui agents", "embodied agents", "embodied agent", "embodied",
-    
-    # GUI-Specific Technical Terms 
-    "gui grounding", "gui automation", "gui control", "gui interaction",
-    "gui navigation", "gui testing", "gui element", "gui elements", "document images",
-    "screenshot", "screenshot analysis", "screenshot based", "screen understanding",
-    "visual grounding", "element grounding", "ui grounding", "click point", "click points", 
-    
-    # Vision-Language for Agents (high precision terms)
-    "computer vision for gui", "vision language action", "vision action",
-    "vision action agent", "vision action agents", "autonomous gui", "vision language assistant",
-    
-    # Interaction Modalities (specific to GUI/OS agents)
-    "click action", "scroll action", "mouse control", "keyboard control",
-    "coordinate extraction", 
-    "ui element recognition", "visual element recognition",
-    
-    # Platform-Specific (helps distinguish from general AI)
-    "mobile app", "android gui", "ios interface", "web interface", "android agent",
-    "desktop automation", "windows os", "operating system control", "operating system", "os",
-    "browser automation", "web navigation", "mobile automation", "mobile agent","mobile agents",
-    
-    # Research (very specific to field)
-    "gpt 4 technical report","webarena", "miniwob", "mind2web", "omniact", "screenqa",
-    "rico dataset", "windowsagentarena", "osworld", "screenspot", "erica", "rico",
-    "mobile3m", "pixelweb", "webvoyager", "screenspot", "guicourse", "groundui", "showui",
-    
-    # Action Planning for GUI (distinguishes from general planning)
-    "gui planning", "interface planning", "screen planning", "ui planning",
-    "action sequence", "multi-step gui", "gui task", "interface task",
-    
-    # Evaluation Terms (field-specific)
-    "gui evaluation", "interface evaluation", "automation success rate",
-    "element accuracy", "click accuracy", "navigation accuracy",
-    
-    # Emerging Terms (2024-2025 papers)
-    "foundation action model", "computer control", "computer use", "digital interface",
-    "human-computer interaction", "embodied interaction", "screen interaction"
-]
+# Improved Multi-Tier Keyword Classification for GUI/OS/Visual Agent Papers
+class KeywordFilter:
+    def __init__(self):
+        # High-precision keywords (very specific to GUI/OS agents) - 10 points each
+        self.high_precision_keywords = [
+            # Very specific agent types
+            "gui agent", "gui agents", "visual gui agent", "visual gui agents",
+            "ui agent", "ui agents", "screen agent", "desktop agent", "mobile agent", "mobile agents",
+            "os agent", "os agents", "operating system agent", "operating system agents",
+            "computer using agent", "vision action agent", "vision action agents",
+            
+            # Specific technical terms
+            "gui automation", "gui control", "gui interaction", "gui navigation", "graphical user interfaces", "graphical user interface"
+            "gui grounding", "gui planning", "gui evaluation", "gui testing", "ui screenshot", "ui screenshots", "gui screenshot", "gui screenshots", 
+            "ui grounding", "ui planning", "ui element recognition", "screenshot","screenshots",
+            "screenshot analysis", "screenshot based", "screen understanding",
+            "visual grounding", "element grounding", "click point", "click points",
+            "coordinate extraction", "click action", "scroll action",
+            
+            # Research-specific terms (datasets, benchmarks, tools), 
+            "webarena", "miniwob", "mind2web", "omniact", "screenqa", "rico dataset",
+            "windowsagentarena", "osworld", "screenspot", "mobile3m", "pixelweb", 
+            "webvoyager", "guicourse", "groundui", "showui", "uibert", "MobileAgent",
+            
+            # Very specific compound terms
+            "computer vision for gui", "vision language action", "autonomous gui",
+            "desktop automation", "browser automation", "mobile automation",
+            "android gui", "ios interface", "web interface",
+            "foundation action model", "embodied interaction", "screen interaction"
+        ]
+        
+        # Medium-precision keywords (need additional context) - 3 points each with context boost
+        self.medium_precision_keywords = [
+            "visual agent", "visual agents", "embodied agent", "embodied agents", "embodied ai", "embodiment ai"
+            "user interface", "graphical user interface", "mobile ui", "document ai",
+            "computer control", "computer use", "digital interface", "document images",
+            "vision language assistant", "visual element recognition",
+            "action sequence", "multi-step gui", "gui task", "interface task",
+            "automation success rate", "element accuracy", "click accuracy",
+            "gpt 4 technical report", "cogvlm", "webgpt", "ferret", "vision language action models"
+        ]
+        
+        # Context keywords (strengthen matches) - 0.1 points each, boost medium-precision
+        self.context_keywords = [
+            "agent", "agents", "autonomous", "automation", "control", "interaction",
+            "multimodal", "vision", "visual", "language model", "llm", "ai assistant",
+            "interface", "gui", "ui", "screen", "screenshot", "click", "navigation",
+            "element", "widget", "button", "mobile", "desktop", "web", "browser",
+            "task", "action", "planning", "reasoning", "grounding", "understanding",
+            "evaluation", "benchmark", "dataset", "performance"
+        ]
+        
+        # Exclusion patterns (apply 70% penalty if found)
+        self.exclusion_patterns = [
+            r"\b(medical|clinical|hospital|patient|disease|diagnosis|treatment|therapy|drug|pharmaceutical)\b",
+            r"\b(financial|banking|trading|investment|market|stock|economic|business|commerce)\b",
+            r"\b(text mining|text analysis|natural language processing|nlp|text classification|sentiment analysis)\b",
+        ]
 
-def filter_gui_os_visual_papers(paper_data, keywords=GUI_OS_VISUAL_AGENT_KEYWORDS):
+    def normalize_text(self, text):
+        """Normalize text for keyword matching - ignore case and special characters."""
+        if not text:
+            return ""
+        # Convert to lowercase
+        text = text.lower()
+        # Replace all non-alphanumeric characters with spaces (including hyphens, underscores)
+        text = re.sub(r'[^\w\s]', ' ', text)
+        # Normalize multiple spaces to single spaces
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+
+    def find_keyword_matches(self, text, keywords):
+        """Find keyword matches using word boundaries."""
+        matches = []
+        normalized_text = self.normalize_text(text)
+        for keyword in keywords:
+            pattern = r'\b' + re.escape(keyword.lower()) + r'\b'
+            if re.search(pattern, normalized_text):
+                matches.append(keyword)
+        return matches
+
+    def check_exclusion_context(self, text):
+        """Check if text contains exclusion patterns."""
+        normalized_text = self.normalize_text(text)
+        for pattern in self.exclusion_patterns:
+            if re.search(pattern, normalized_text, re.IGNORECASE):
+                return True
+        return False
+
+    def calculate_relevance_score(self, text):
+        """Calculate relevance score based on keyword matches and context."""
+        matches = {
+            'high_precision': self.find_keyword_matches(text, self.high_precision_keywords),
+            'medium_precision': self.find_keyword_matches(text, self.medium_precision_keywords),
+            'context': self.find_keyword_matches(text, self.context_keywords)
+        }
+        
+        has_exclusion = self.check_exclusion_context(text)
+        
+        # Calculate base score
+        score = 0.0
+        score += len(matches['high_precision']) * 10.0
+        
+        # Medium precision with context boost
+        medium_score = len(matches['medium_precision']) * 3.0
+        context_boost = min(len(matches['context']) * 0.5, 5.0)
+        score += medium_score * (1.0 + context_boost / 10.0)
+        
+        score += len(matches['context']) * 0.1
+        
+        # Apply exclusion penalty
+        if has_exclusion:
+            score *= 0.3
+        
+        return score, matches
+
+# Initialize the improved filter globally
+IMPROVED_FILTER = KeywordFilter()
+
+def filter_gui_os_visual_papers(paper_data, threshold=2.5):
     """
-    Filter papers for GUI/OS/Visual agent relevance.
+    Filter papers for GUI/OS/Visual agent relevance using improved scoring system.
     
     Args:
         paper_data: Dictionary with paper information
-        keywords: List of keywords to search for
+        threshold: Minimum relevance score for inclusion (default: 5.0)
         
     Returns:
-        tuple: (bool, list) - (is_relevant, matched_keywords)
+        tuple: (bool, dict) - (is_relevant, detailed_results)
     """
     # Get sections, handling missing fields gracefully
     sections = paper_data.get('sections', {})
@@ -93,26 +166,27 @@ def filter_gui_os_visual_papers(paper_data, keywords=GUI_OS_VISUAL_AGENT_KEYWORD
         sections.get('conclusion', '')
     ]
     
-    # Filter out empty strings, join, convert to lowercase
-    searchable_text = ' '.join([part for part in searchable_parts if part]).lower()
+    # Filter out empty strings and combine
+    combined_text = ' '.join([part for part in searchable_parts if part])
     
-    # Remove punctuation and special characters, keep only letters, numbers, and spaces
-    searchable_text = re.sub(r'[^\w\s]', ' ', searchable_text)
+    # Calculate relevance score using improved filter
+    score, matches = IMPROVED_FILTER.calculate_relevance_score(combined_text)
     
-    # Normalize multiple spaces to single spaces
-    searchable_text = re.sub(r'\s+', ' ', searchable_text).strip()
+    # Determine relevance
+    is_relevant = score >= threshold
     
-    # Check for keyword matches using whole word matching
-    matches = []
-    for keyword in keywords:
-        # Use word boundaries to match whole words only, not substrings
-        # This prevents false positives like "gui" matching "language" or "os" matching "cost"
-        pattern = r'\b' + re.escape(keyword) + r'\b'
-        if re.search(pattern, searchable_text):
-            matches.append(keyword)
+    # Prepare detailed results
+    detailed_results = {
+        'score': score,
+        'threshold': threshold,
+        'matches': matches,
+        'total_matches': sum(len(match_list) for match_list in matches.values()),
+        'has_high_precision': len(matches['high_precision']) > 0,
+        'has_exclusion': IMPROVED_FILTER.check_exclusion_context(combined_text),
+        'matched_keywords': matches['high_precision'] + matches['medium_precision']  # For backward compatibility
+    }
     
-    # Return True if at least one keyword match found
-    return len(matches) > 0, matches
+    return is_relevant, detailed_results
 
 def should_keep_paper(paper_data, output_filename="filtered_papers.json", verbose=False):
     """
@@ -186,13 +260,27 @@ def filter_papers_and_save(input_filename, output_filename="filtered_papers.json
             filtered.append(paper)
             stats['level_1'] += 1
         elif level in [2, 3]:
-            if should_keep_paper(paper, verbose):
+            # Get detailed filtering results
+            is_relevant, details = filter_gui_os_visual_papers(paper)
+            if is_relevant:
                 filtered.append(paper)
                 stats['level_2_3_kept'] += 1
-                logger.log(f"  ✅ KEPT (Level {level} - classified as relevant)")
+                high_precision = details['matches']['high_precision']
+                medium_precision = details['matches']['medium_precision']
+                score = details['score']
+                logger.log(f"  ✅ KEPT (Level {level}, Score: {score:.2f})")
+                if high_precision:
+                    logger.log(f"    High-precision matches: {high_precision}")
+                if medium_precision:
+                    logger.log(f"    Medium-precision matches: {medium_precision}")
+                if details['has_exclusion']:
+                    logger.log(f"    ⚠️  Exclusion context detected (score penalized)")
             else:
                 stats['level_2_3_filtered'] += 1
-                logger.log(f"  ❌ FILTERED (Level {level} - classified as not relevant)")
+                score = details['score']
+                logger.log(f"  ❌ FILTERED (Level {level}, Score: {score:.2f} < {details['threshold']})")
+                if verbose and details['total_matches'] > 0:
+                    logger.log(f"    Some matches found but score too low: {details['matched_keywords']}")
     
     # Save filtered results
     logger.log(f"Saving filtered papers to {output_filename}...")
