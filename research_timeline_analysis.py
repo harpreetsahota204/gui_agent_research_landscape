@@ -100,7 +100,7 @@ def create_timeline_chart(data, output_dir):
         plt.plot(trend_years, trend_counts, '--', linewidth=2, alpha=0.7, 
                  label='Trend Projection', color='#A23B72', zorder=2)
     
-    plt.title('GUI Agent Research Timeline\nTotal Papers Published by Year (with 2025-2026 Projection)', 
+    plt.title('GUI Agent Research Publications by Year (2016-2025)', 
               fontsize=16, fontweight='bold', pad=20)
     plt.xlabel('Year', fontsize=12)
     plt.ylabel('Number of Papers', fontsize=12)
@@ -180,7 +180,7 @@ def create_platform_trends_chart(data, output_dir):
         plt.plot(years, platform_data[platform], marker='o', 
                 linewidth=2, markersize=6, label=platform)
     
-    plt.title('Platform Research Trends Over Time\nNumber of Papers by Target Platform', 
+    plt.title('GUI Agent Research by Target Platform Over Time', 
               fontsize=16, fontweight='bold', pad=20)
     plt.xlabel('Year', fontsize=12)
     plt.ylabel('Number of Papers', fontsize=12)
@@ -249,7 +249,7 @@ def create_innovation_trends_chart(data, output_dir):
         plt.plot(years, innovation_data[innovation_type], marker='o', 
                 linewidth=2, markersize=6, label=label)
     
-    plt.title('Innovation Type Trends Over Time\nNumber of Papers by Contribution Type (Models/Architectures Combined)', 
+    plt.title('Research Contributions by Innovation Type (2016-2025)', 
               fontsize=16, fontweight='bold', pad=20)
     plt.xlabel('Year', fontsize=12)
     plt.ylabel('Number of Papers', fontsize=12)
@@ -342,7 +342,7 @@ def create_compound_innovation_chart(data, output_dir):
                         alpha=0.8, label=label, color=colors[i])
         bottom += category_data[category]
     
-    plt.title('Compound Innovation Analysis (Corrected)\nDistribution of Papers by Number of Innovations Over Time\n(Models/Architectures Combined to Avoid Double Counting)', 
+    plt.title('Distribution of Papers by Number of Innovations per Paper', 
               fontsize=16, fontweight='bold', pad=20)
     plt.xlabel('Year', fontsize=12)
     plt.ylabel('Number of Papers', fontsize=12)

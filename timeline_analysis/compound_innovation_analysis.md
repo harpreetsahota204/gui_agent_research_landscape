@@ -157,7 +157,23 @@ This chart shows how different types of contributions have evolved over time. Te
 
 ![Compound Innovations](compound_innovations.png)
 
-This stacked area chart tells the story of increasing research comprehensiveness in GUI agents. The bottom gray area shows papers with no major innovations - this category is shrinking over time. Single-innovation papers (light blue) remain the largest category but are relatively decreasing. The exciting trend is in the purple and pink areas - papers with 2 or 3 innovations are rapidly growing. By 2024, 36.5% of papers introduce multiple innovations, up from 25.6% in 2022. This suggests the field is maturing beyond single-contribution papers toward more holistic research that combines technical advances with datasets and evaluation frameworks.
+**How to Read This Stacked Area Chart:**
+
+This chart shows the total number of papers each year, broken down by how many innovations each paper contributes:
+
+- **Gray (bottom)**: Papers with **0 innovations** - these are survey papers, position papers, or papers that don't introduce new technical contributions
+- **Light Blue**: Papers with **1 innovation** - traditional single-focus research (e.g., just a new model, or just a new dataset)
+- **Purple**: Papers with **2 innovations** - comprehensive papers combining two contribution types (e.g., new model + new dataset)
+- **Pink (top)**: Papers with **3 innovations** - highly comprehensive papers introducing all three types: technical contribution + dataset + benchmark
+
+**Key Insights:**
+- The **total height** at any year shows the total number of papers published that year
+- The **relative proportions** show how the field is evolving toward more comprehensive research
+- **Gray area shrinking** = fewer papers with no major innovations
+- **Purple and pink areas growing** = more multi-innovation papers
+- By 2024, **36.5% of papers** (purple + pink areas) introduce multiple innovations, up from 25.6% in 2022
+
+This trend suggests the field is maturing beyond single-contribution papers toward more holistic research that combines technical advances with datasets and evaluation frameworks.
 
 ## Technical Notes
 
