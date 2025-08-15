@@ -1,21 +1,3 @@
-#!/usr/bin/env python3
-"""
-Clean Citation Network Analysis for GUI Agent Research
-
-A simplified, elegant approach to citation analysis that focuses on:
-- Clear, readable code without over-engineering
-- Tables for structured data presentation
-- Charts only where visual patterns matter
-- Well-documented functions with single responsibilities
-- Minimal dependencies and error handling
-
-Core analyses:
-1. Citation influence ranking with detailed tables
-2. Network centrality metrics (PageRank, betweenness)
-3. Research cluster identification
-4. Cross-platform influence patterns
-"""
-
 import json
 import pandas as pd
 import numpy as np
@@ -40,15 +22,72 @@ GENERAL_FOUNDATION_MODELS = {
     '2307.02477'   # General model (if exists)
 }
 
+# Papers to exclude from datasets analysis (not GUI/OS focused, but keep in most cited)
+NON_GUI_DATASETS = {
+    '2404.16821',  # How Far Are We to GPT-4V
+    '2403.05525',  # Non-GUI dataset
+    '2402.11684',  # Non-GUI dataset
+    '2402.05935',  # Non-GUI dataset
+    '2405.02246',  # Non-GUI dataset
+    '2401.06209',   # Non-GUI dataset
+    '2112.09332',   # WebGPT
+    '2303.11366',   # Reflexion: Language Agents with Verbal Reinforcement Learning
+    '2310.09478'    # MiniGPT-v2: large language model as a unified interface for vision-language multi-task learning
+}
+
 def should_exclude_from_gui_analysis(arxiv_id):
-    """Check if paper should be excluded from GUI-specific analysis"""
-    return arxiv_id in GENERAL_FOUNDATION_MODELS
+    """Check if paper should be excluded from GUI-specific analysis (but not most cited/foundation)"""
+    return arxiv_id in GENERAL_FOUNDATION_MODELS or arxiv_id in NON_GUI_DATASETS
 
 def ensure_output_directory():
     """Create output directory if it doesn't exist"""
     if not os.path.exists(OUTPUT_DIR):
         os.makedirs(OUTPUT_DIR)
         print(f"Created output directory: {OUTPUT_DIR}")
+
+def add_synthetic_arxiv_ids(papers):
+    """
+    Add synthetic arXiv IDs for specific papers that don't have them.
+    
+    Args:
+        papers: List of paper dictionaries
+        
+    Returns:
+        list: Papers with synthetic arXiv IDs added where needed
+    """
+    synthetic_mappings = {
+        "Rico: A Mobile App Dataset for Building Data-Driven Design Applications": "1710.99999",
+        "ERICA: Interaction Mining Mobile Apps": "1610.99999"
+    }
+    
+    papers_with_ids = []
+    added_count = 0
+    
+    for paper in papers:
+        paper_copy = paper.copy()
+        title = paper_copy.get('title', '')
+        
+        # Skip papers that don't need synthetic IDs
+        if title not in synthetic_mappings:
+            papers_with_ids.append(paper_copy)
+            continue
+        
+        current_arxiv_id = paper_copy.get('arxiv_id')
+        
+        # Add synthetic ID if paper doesn't have one
+        if not current_arxiv_id:
+            paper_copy['arxiv_id'] = synthetic_mappings[title]
+            added_count += 1
+            print(f"Added synthetic arXiv ID {synthetic_mappings[title]} for: {title}")
+        else:
+            print(f"Paper already has arXiv ID {current_arxiv_id}: {title}")
+        
+        papers_with_ids.append(paper_copy)
+    
+    if added_count > 0:
+        print(f"Added {added_count} synthetic arXiv IDs")
+    
+    return papers_with_ids
 
 def load_papers(filepath):
     """
@@ -60,8 +99,8 @@ def load_papers(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         papers = json.load(f)
     
-    # Keep only papers with required fields
-    clean_papers = [p for p in papers if p.get('arxiv_id') and p.get('title')]
+    # Add synthetic arXiv IDs for specific papers
+    papers = add_synthetic_arxiv_ids(papers)
     
     # Filter out survey papers
     def is_survey_paper(paper):
@@ -78,11 +117,10 @@ def load_papers(filepath):
         return False
     
     # Separate survey and non-survey papers
-    survey_papers = [p for p in clean_papers if is_survey_paper(p)]
-    non_survey_papers = [p for p in clean_papers if not is_survey_paper(p)]
+    survey_papers = [p for p in papers if is_survey_paper(p)]
+    non_survey_papers = [p for p in papers if not is_survey_paper(p)]
     
     print(f"Loaded {len(papers)} total papers")
-    print(f"Found {len(clean_papers)} papers with required fields")
     print(f"Excluded {len(survey_papers)} survey papers")
     print(f"Keeping {len(non_survey_papers)} non-survey papers for analysis")
     
@@ -96,9 +134,16 @@ def build_paper_database(papers):
         dict: Paper database indexed by arxiv_id
     """
     db = {}
+    skipped_count = 0
     
     for paper in papers:
-        arxiv_id = paper['arxiv_id']
+        arxiv_id = paper.get('arxiv_id')
+        
+        # Skip papers without arXiv IDs
+        if not arxiv_id:
+            skipped_count += 1
+            continue
+            
         db[arxiv_id] = {
             'title': paper['title'],
             'year': paper.get('year'),
@@ -108,7 +153,10 @@ def build_paper_database(papers):
             'citation_count': len(paper.get('cited_by', [])),
         }
     
-
+    if skipped_count > 0:
+        print(f"Skipped {skipped_count} papers without arXiv IDs")
+    
+    print(f"Built database with {len(db)} papers")
     return db
 
 def build_citation_network(paper_db):
@@ -127,7 +175,7 @@ def build_citation_network(paper_db):
     # Add citation edges
     for arxiv_id, paper in paper_db.items():
         for citing_paper in paper['cited_by']:
-            if citing_paper in paper_db:  # Only internal citations
+            if citing_paper in paper_db:
                 G.add_edge(arxiv_id, citing_paper)
     
     print(f"Built network: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
@@ -166,9 +214,9 @@ def calculate_network_metrics(graph, paper_db):
             citation_count = paper_db[paper_id]['citation_count']
             
             # Detect and correct PageRank artifacts
-            if (paper_year and paper_year >= 2024 and 
+            if (paper_year >= 2024 and 
                 raw_pagerank > pagerank_95th and 
-                citation_count < 5):
+                citation_count < 2):
                 # Likely artifact - dampen severely
                 corrected_pagerank = min(raw_pagerank * 0.1, pagerank_mean)
                 print(f"PageRank artifact detected for {paper_id} ({paper_year}): {raw_pagerank:.6f} -> {corrected_pagerank:.6f}")
@@ -263,6 +311,10 @@ def create_benchmarks_datasets_models_tables(papers):
         }
         
         # Categorize based only on introduces_new_* boolean fields
+        # Skip papers excluded from GUI-specific analysis
+        if should_exclude_from_gui_analysis(arxiv_id):
+            continue
+            
         if paper.get('introduces_new_benchmark', False):
             benchmark_papers.append(paper_info)
             
@@ -281,17 +333,9 @@ def create_benchmarks_datasets_models_tables(papers):
         
         # Filter out general foundation models from Models category only
         if category_name == 'Models':
-            general_foundation_models = {
-                '2303.08774',  # GPT-4 Technical Report
-                '2308.12966',  # Qwen-VL
-                '2303.03378',  # PaLM-E
-                '2305.16291',  # Voyager
-                '2304.15010',  # LLaMA-Adapter V2
-                '2404.16821',  # How Far Are We to GPT-4V
-                '2307.01952'   # SDXL
-            }
+
             # Filter out general foundation models to focus on GUI agent-specific models
-            papers_list = [p for p in papers_list if p['arxiv_id'] not in general_foundation_models]
+            papers_list = [p for p in papers_list if p['arxiv_id'] not in GENERAL_FOUNDATION_MODELS]
             
         # Sort by citations (most impactful first)
         papers_list.sort(key=lambda x: x['citations'], reverse=True)
@@ -401,14 +445,14 @@ def detect_research_bridges(paper_db, graph):
 def create_most_cited_papers_table(paper_db, top_n=20):
     """
     Create table of most cited papers (raw citation count) and save as PNG.
-    Includes external papers for complete analysis.
+    Includes ALL papers for complete analysis (no exclusions).
     
     Returns:
         pd.DataFrame: Most cited papers
     """
     print(f"\nCreating Top {top_n} Most Cited Papers table...")
     
-    # Convert to DataFrame
+    # Convert to DataFrame - Include ALL papers, no exclusions
     data = []
     for paper_id, paper in paper_db.items():
         data.append({
@@ -535,9 +579,9 @@ def calculate_foundation_and_frontier_scores(graph, paper_db, current_year=2025)
         # and continue to be cited (not just historical artifacts)
         
         # Count citations from different time periods
-        recent_citations = 0  # Last 3 years
-        mid_citations = 0     # 3-7 years ago
-        old_citations = 0     # 7+ years ago
+        recent_citations = 0  # Last 2 years
+        mid_citations = 0     # 3 years ago
+        old_citations = 0     # 3+ years ago
         
         citing_papers = paper_db[paper_id].get('cited_by', [])
         for citing_id in citing_papers:
@@ -545,15 +589,15 @@ def calculate_foundation_and_frontier_scores(graph, paper_db, current_year=2025)
                 citing_year = paper_db[citing_id].get('year')
                 if citing_year:
                     years_ago = current_year - citing_year
-                    if years_ago <= 3:
+                    if years_ago <= 2:
                         recent_citations += 1
-                    elif years_ago <= 7:
+                    elif years_ago <= 3:
                         mid_citations += 1
                     else:
                         old_citations += 1
         
         # Foundation score rewards sustained influence
-        if age >= 5:  # Only consider papers at least 5 years old
+        if age >= 2:  # Only consider papers at least 2 years old
             sustained_influence = min(recent_citations, mid_citations, old_citations) > 0
             decay_factor = 1.0 if sustained_influence else 0.5
             paper_db[paper_id]['foundation_score'] = pagerank.get(paper_id, 0) * math.log(age) * decay_factor
@@ -563,9 +607,9 @@ def calculate_foundation_and_frontier_scores(graph, paper_db, current_year=2025)
         # FRONTIER SCORE
         # Identifies rapidly growing influence and new research directions
         
-        if age <= 5:  # Only consider recent papers
+        if age <= 2:  # Only consider recent papers
             # Citation acceleration (are citations increasing?)
-            if age >= 2:
+            if age >= 1:
                 first_half_citations = sum(1 for citing_id in citing_papers 
                                          if citing_id in paper_db and 
                                          paper_db[citing_id].get('year', 0) <= paper_year + age//2)
@@ -608,242 +652,6 @@ def _normalize_scores(paper_db, score_field):
                 if score_field in paper_db[paper_id]:
                     paper_db[paper_id][score_field] /= max_score
 
-def calculate_monthly_citation_velocity(paper_id, paper_db, window_months=3):
-    """
-    Improved citation velocity and momentum calculation with better physics.
-    
-    Key improvements:
-    - Proper acceleration calculation (first derivative)
-    - Physics-inspired momentum with "mass" factor
-    - Better edge case handling for emerging/declining papers
-    - Confidence metrics for data quality assessment
-    """
-    # Build monthly citation timeline
-    citations_by_month = defaultdict(int)
-    
-    for citing_id in paper_db[paper_id]['cited_by']:
-        if citing_id in paper_db:
-            citing_year = paper_db[citing_id].get('year')
-            citing_month = paper_db[citing_id].get('month', 6)  # Default to June if missing
-            
-            if citing_year:
-                # Create comparable month key (e.g., 202403 for March 2024)
-                month_key = citing_year * 100 + citing_month
-                citations_by_month[month_key] += 1
-    
-    if not citations_by_month:
-        return {'velocity': 0, 'acceleration': 0, 'momentum': 0, 'confidence': 'none'}
-    
-    # Sort months and create time series
-    sorted_months = sorted(citations_by_month.keys())
-    
-    # Calculate rolling window velocities
-    velocities = []
-    for i in range(len(sorted_months)):
-        window_start = max(0, i - window_months + 1)
-        window_citations = sum(citations_by_month[sorted_months[j]] 
-                              for j in range(window_start, i + 1))
-        window_size = i - window_start + 1
-        velocities.append(window_citations / window_size)
-    
-    current_velocity = velocities[-1] if velocities else 0
-    
-    # IMPROVED: Calculate acceleration as proper first derivative
-    if len(velocities) >= 2:
-        # Simple acceleration: change in velocity between consecutive periods
-        recent_acceleration = velocities[-1] - velocities[-2]
-        
-        # For more stability, use smoothed acceleration if enough data
-        if len(velocities) >= 4:
-            recent_avg = np.mean(velocities[-2:])
-            earlier_avg = np.mean(velocities[-4:-2])
-            smoothed_acceleration = recent_avg - earlier_avg
-            # Use smoothed if it's not too different from simple
-            if abs(smoothed_acceleration - recent_acceleration) < abs(recent_acceleration) * 0.5:
-                recent_acceleration = smoothed_acceleration
-    else:
-        recent_acceleration = 0
-    
-    # IMPROVED: Better momentum calculation using physics-inspired approach
-    momentum = calculate_improved_momentum(current_velocity, recent_acceleration, velocities)
-    
-    # Calculate confidence based on data quality
-    confidence = calculate_confidence(velocities, sorted_months)
-    
-    # Additional insights
-    trend_direction = classify_trend(velocities[-min(6, len(velocities)):])
-    volatility = calculate_volatility(velocities)
-    
-    return {
-        'velocity': current_velocity,
-        'acceleration': recent_acceleration,
-        'momentum': momentum,
-        'velocity_history': velocities,
-        'months_active': len(sorted_months),
-        'confidence': confidence,
-        'trend_direction': trend_direction,
-        'volatility': volatility,
-        'is_emerging': current_velocity == 0 and recent_acceleration > 0,
-        'is_declining': current_velocity > 0 and recent_acceleration < -current_velocity * 0.5
-    }
-
-def calculate_improved_momentum(velocity, acceleration, velocity_history):
-    """
-    Calculate momentum using physics-inspired approach.
-    Momentum = mass × velocity, where 'mass' represents citation sustainability.
-    
-    Key improvements:
-    - Handles emerging papers (velocity=0, acceleration>0)
-    - Penalizes declining papers appropriately
-    - Uses consistency as "mass" factor for sustainability
-    - Prevents negative momentum values
-    """
-    # Base momentum from current velocity
-    base_momentum = velocity
-    
-    # Acceleration contribution (but don't let it dominate)
-    acceleration_factor = 0.3  # Acceleration is less important than current velocity
-    acceleration_contribution = acceleration * acceleration_factor
-    
-    # Calculate "mass" factor based on citation consistency
-    if len(velocity_history) >= 3:
-        # Papers with consistent velocity have more "mass"
-        recent_velocities = velocity_history[-6:] if len(velocity_history) >= 6 else velocity_history
-        velocity_std = np.std(recent_velocities)
-        velocity_mean = np.mean(recent_velocities)
-        
-        if velocity_mean > 0:
-            consistency_factor = 1 / (1 + velocity_std / velocity_mean)  # 0 to 1
-        else:
-            consistency_factor = 0.5
-        
-        # Sustained papers have more momentum
-        mass_factor = 0.5 + consistency_factor * 0.5  # 0.5 to 1.0
-    else:
-        mass_factor = 0.7  # Default for new papers
-    
-    # Final momentum calculation
-    momentum = (base_momentum + acceleration_contribution) * mass_factor
-    
-    # Handle special cases
-    if velocity == 0 and acceleration > 0:
-        # Emerging paper: momentum from acceleration only
-        momentum = acceleration * 0.5
-    elif velocity > 0 and acceleration < -velocity:
-        # Declining paper: reduce momentum more aggressively
-        momentum = velocity * (1 + acceleration / velocity) * 0.8
-    
-    return max(0, momentum)  # Momentum can't be negative
-
-def calculate_confidence(velocities, months):
-    """Calculate confidence in the momentum calculation based on data quality."""
-    if len(velocities) < 3:
-        return 'low'
-    elif len(velocities) < 6:
-        return 'medium'
-    else:
-        # Check for data quality issues
-        month_gaps = check_month_gaps(months)
-        if month_gaps > 3:  # More than 3 months between citations
-            return 'medium'
-        else:
-            return 'high'
-
-def check_month_gaps(months):
-    """Check for large gaps in citation timeline."""
-    if len(months) < 2:
-        return 0
-    
-    max_gap = 0
-    for i in range(1, len(months)):
-        gap = calculate_month_difference(months[i-1], months[i])
-        max_gap = max(max_gap, gap)
-    
-    return max_gap
-
-def calculate_month_difference(month1, month2):
-    """Calculate difference between two month keys (YYYYMM format)."""
-    year1, mon1 = divmod(month1, 100)
-    year2, mon2 = divmod(month2, 100)
-    return (year2 - year1) * 12 + (mon2 - mon1)
-
-def classify_trend(recent_velocities):
-    """Classify the recent trend direction using linear regression."""
-    if len(recent_velocities) < 3:
-        return 'insufficient_data'
-    
-    # Linear regression on recent velocities
-    x = np.arange(len(recent_velocities))
-    slope = np.polyfit(x, recent_velocities, 1)[0]
-    
-    if slope > 0.1:
-        return 'accelerating'
-    elif slope < -0.1:
-        return 'decelerating'
-    else:
-        return 'stable'
-
-def calculate_volatility(velocities):
-    """Calculate velocity volatility (coefficient of variation)."""
-    if len(velocities) < 2:
-        return 0
-    
-    mean_vel = np.mean(velocities)
-    if mean_vel == 0:
-        return 0
-    
-    return np.std(velocities) / mean_vel
-
-def detect_influence_phases(paper_id, paper_db):
-    """
-    Identify distinct phases in a paper's influence trajectory.
-    Useful for understanding research adoption patterns.
-    """
-    citations_by_month = build_monthly_citations(paper_id, paper_db)
-    
-    if len(citations_by_month) < 6:
-        return {'current_phase': 'too_early', 'transitions': []}
-    
-    # Convert to time series
-    months = sorted(citations_by_month.keys())
-    citation_series = [citations_by_month[m] for m in months]
-    
-    # Detect phase transitions using change point detection
-    transitions = []
-    window = 3
-    
-    for i in range(window, len(citation_series) - window):
-        before_mean = np.mean(citation_series[i-window:i])
-        after_mean = np.mean(citation_series[i:i+window])
-        
-        if before_mean > 0:
-            change_ratio = after_mean / before_mean
-            
-            if change_ratio > 2.0:  # Sudden increase
-                transitions.append({
-                    'month': months[i],
-                    'type': 'breakthrough',
-                    'magnitude': change_ratio
-                })
-            elif change_ratio < 0.5:  # Sudden decrease
-                transitions.append({
-                    'month': months[i],
-                    'type': 'decline',
-                    'magnitude': change_ratio
-                })
-    
-    # Classify current phase based on recent trajectory
-    recent_months = citation_series[-6:] if len(citation_series) >= 6 else citation_series
-    trend = np.polyfit(range(len(recent_months)), recent_months, 1)[0]
-    
-    current_phase = classify_phase(trend, recent_months[-1], transitions)
-    
-    return {
-        'current_phase': current_phase,
-        'transitions': transitions,
-        'months_since_last_transition': calculate_months_since(transitions, months[-1])
-    }
-
 def calculate_future_impact_signals(paper_id, paper_db):
     """
     Calculate signals that correlate with future citation growth.
@@ -864,30 +672,40 @@ def calculate_future_impact_signals(paper_id, paper_db):
     early_growth_ratio = month_6_citations / max(month_3_citations, 1)
     sustained_growth = month_12_citations / max(month_6_citations, 1)
     
-    # Self-citation ratio (high self-citation often predicts lower future impact)
-    self_citation_ratio = calculate_self_citation_ratio(paper_id, paper_db, months=6)
+    # Individual signal flags
+    has_early_momentum = month_3_citations > 3
+    has_acceleration = early_growth_ratio > 2
+    has_sustained_growth = sustained_growth > 0.8
+    
+    # Count positive signals (most honest approach)
+    signal_count = sum([
+        has_early_momentum,
+        has_acceleration,
+        has_sustained_growth,
+    ])
     
     # Predict future trajectory
     signals = {
         'early_momentum': month_3_citations,
         'growth_acceleration': early_growth_ratio,
-        'growth_sustained': sustained_growth > 0.8,
-        'low_self_citation': self_citation_ratio < 0.2,
-        'prediction_confidence': 'high' if len(early_citations) >= 12 else 'medium'
+        'growth_sustained': has_sustained_growth,
+        'prediction_confidence': 'high' if len(early_citations) >= 12 else 'medium',
+        'breakthrough_potential': signal_count,
+        'predicted_trajectory': classify_trajectory_by_count(signal_count)
     }
     
-    # Combine signals for prediction (rebalanced weights)
-    breakthrough_score = (
-        (signals['early_momentum'] > 5) * 0.4 +
-        (signals['growth_acceleration'] > 2) * 0.4 +
-        signals['growth_sustained'] * 0.15 +
-        signals['low_self_citation'] * 0.05
-    )
-    
-    signals['breakthrough_potential'] = breakthrough_score
-    signals['predicted_trajectory'] = classify_trajectory(breakthrough_score)
-    
     return signals
+
+def classify_trajectory_by_count(signal_count):
+    """Classify predicted trajectory based on number of positive signals."""
+    if signal_count >= 3:
+        return 'strong_potential'
+    elif signal_count == 2:
+        return 'moderate_potential'
+    elif signal_count == 1:
+        return 'limited_potential'
+    else:
+        return 'unclear_trajectory'
 
 def calculate_citation_velocity_trend(paper_id, paper_db):
     """
@@ -924,122 +742,6 @@ def calculate_citation_velocity_trend(paper_id, paper_db):
         'velocity_history': velocities
     }
 
-def detect_citation_bursts(paper_id, paper_db, min_duration=2, sensitivity=1.5):
-    """
-    Detect citation bursts with statistical rigor and context awareness.
-    
-    Args:
-        min_duration: Minimum months for a burst (filters noise)
-        sensitivity: Sigma multiplier for threshold (lower = more sensitive)
-    """
-    citations_by_month = build_monthly_citations(paper_id, paper_db)
-    if len(citations_by_month) < 6:
-        return {'max_burst_strength': 0, 'is_currently_bursting': False, 'burst_periods': []}
-    
-    months = sorted(citations_by_month.keys())
-    citation_series = np.array([citations_by_month[m] for m in months])
-    
-    # Calculate adaptive baseline using Gaussian smoothing
-    try:
-        from scipy.ndimage import gaussian_filter1d
-        smoothed_baseline = gaussian_filter1d(citation_series, sigma=2, mode='nearest')
-    except ImportError:
-        # Fallback to simple moving average if scipy not available
-        smoothed_baseline = np.convolve(citation_series, np.ones(5)/5, mode='same')
-    
-    # Calculate dynamic threshold based on local statistics
-    burst_periods = []
-    i = 0
-    while i < len(citation_series):
-        # Local statistics (6-month window)
-        window_start = max(0, i - 3)
-        window_end = min(len(citation_series), i + 3)
-        local_data = citation_series[window_start:window_end]
-        
-        local_mean = np.mean(local_data)
-        local_std = np.std(local_data)
-        threshold = smoothed_baseline[i] + (sensitivity * max(local_std, 1))
-        
-        if citation_series[i] >= threshold:
-            # Start of potential burst
-            burst_start = i
-            burst_peak = citation_series[i]
-            burst_sum = citation_series[i]
-            
-            # Extend burst period
-            j = i + 1
-            while j < len(citation_series) and citation_series[j] >= threshold * 0.7:  # 70% threshold for continuation
-                burst_peak = max(burst_peak, citation_series[j])
-                burst_sum += citation_series[j]
-                j += 1
-            
-            burst_duration = j - burst_start
-            
-            # Only count if minimum duration met
-            if burst_duration >= min_duration:
-                # Calculate burst characteristics
-                pre_burst_avg = np.mean(citation_series[max(0, burst_start-3):burst_start]) if burst_start > 0 else 0.5
-                burst_avg = burst_sum / burst_duration
-                
-                burst_periods.append({
-                    'start_month': months[burst_start],
-                    'end_month': months[j-1],
-                    'duration': burst_duration,
-                    'peak': burst_peak,
-                    'total_citations': burst_sum,
-                    'strength': burst_avg / max(pre_burst_avg, 0.5),  # Relative increase
-                    'type': classify_burst_type(burst_duration, burst_peak, burst_avg)
-                })
-            
-            i = j  # Skip past this burst
-        else:
-            i += 1
-    
-    # Analyze current status
-    is_currently_bursting = (len(burst_periods) > 0 and 
-                            burst_periods[-1]['end_month'] >= months[-3])  # Within last 3 months
-    
-    max_burst_strength = max([b['strength'] for b in burst_periods]) if burst_periods else 0
-    
-    # Add metadata about burst patterns
-    burst_pattern = classify_burst_pattern(burst_periods, citation_series)
-    
-    return {
-        'max_burst_strength': max_burst_strength,
-        'is_currently_bursting': is_currently_bursting,
-        'burst_periods': burst_periods,
-        'burst_pattern': burst_pattern,  # e.g., "periodic", "singular", "escalating"
-        'total_burst_months': sum(b['duration'] for b in burst_periods),
-        'burst_frequency': len(burst_periods) / len(months) if months else 0
-    }
-
-def classify_burst_type(duration, peak, avg):
-    """Classify the type of burst based on characteristics"""
-    if duration <= 2 and peak > avg * 1.5:
-        return "spike"  # Conference or event-driven
-    elif duration >= 6 and avg > peak * 0.7:
-        return "sustained"  # Breakthrough discovery
-    elif peak > avg * 2:
-        return "viral"  # Rapid amplification
-    else:
-        return "gradual"  # Steady increase
-
-def classify_burst_pattern(burst_periods, citation_series):
-    """Identify overall burst pattern"""
-    if not burst_periods:
-        return "no_bursts"
-    elif len(burst_periods) == 1:
-        return "singular"
-    elif len(burst_periods) >= 3:
-        # Check if bursts are getting stronger
-        strengths = [b['strength'] for b in burst_periods]
-        if strengths[-1] > strengths[0] * 1.5:
-            return "escalating"
-        else:
-            return "periodic"
-    else:
-        return "intermittent"
-
 def calculate_time_weighted_influence(paper_id, paper_db):
     """
     Calculate influence with time decay weighting to emphasize recent citations.
@@ -1062,12 +764,12 @@ def calculate_time_weighted_influence(paper_id, paper_db):
                 # Calculate months ago
                 months_ago = (current_year - citing_year) * 12 + (current_month - citing_month)
                 
-                # Recent citations (last 6 months)
-                if months_ago <= 6:
+                # Recent citations (last 3 months)
+                if months_ago <= 3:
                     recent_citations += 1
                 
-                # Time decay weight (exponential decay with half-life of 12 months)
-                decay_factor = 0.5 ** (months_ago / 12)
+                # Time decay weight (exponential decay with half-life of 9 months)
+                decay_factor = 0.5 ** (months_ago / 9)
                 total_weighted_citations += decay_factor
     
     recency_ratio = recent_citations / max(raw_citations, 1)
@@ -1079,109 +781,104 @@ def calculate_time_weighted_influence(paper_id, paper_db):
         'recency_ratio': recency_ratio
     }
 
-def calculate_temporal_influence_profile(paper_id, paper_db):
+def detect_simple_citation_bursts(paper_id, paper_db):
     """
-    Comprehensive temporal profile with enhanced burst intelligence.
+    Simplified burst detection - just find months with unusually high citations.
     """
-    velocity_trends = calculate_citation_velocity_trend(paper_id, paper_db)
-    burst_profile = detect_citation_bursts(paper_id, paper_db)
-    decay_weighted = calculate_time_weighted_influence(paper_id, paper_db)
+    citations_by_month = build_monthly_citations(paper_id, paper_db)
     
-    # Extract richer burst characteristics
-    burst_pattern = burst_profile.get('burst_pattern', 'no_bursts')
-    burst_frequency = burst_profile.get('burst_frequency', 0)
-    current_burst_type = None
-    if burst_profile['is_currently_bursting'] and burst_profile['burst_periods']:
-        current_burst_type = burst_profile['burst_periods'][-1].get('type')
+    if len(citations_by_month) < 6:
+        return {
+            'has_bursts': False,
+            'max_month_citations': 0,
+            'avg_citations_per_month': 0,
+            'burst_strength': 0
+        }
     
-    # More sophisticated pattern classification
-    if burst_profile['is_currently_bursting'] and velocity_trends['is_accelerating']:
-        if burst_pattern == "escalating" and current_burst_type == "sustained":
-            pattern = "🚀 Breakthrough Momentum"  # Genuine paradigm shift
-        elif burst_pattern == "escalating" and current_burst_type == "viral":
-            pattern = "💫 Rising Star"  # Rapid rise, high potential
-        elif current_burst_type == "spike":
-            pattern = "📢 Event-Driven Spike"  # Conference/announcement driven
-        else:
-            pattern = "💥 Active Burst"  # Generic current burst
+    monthly_values = list(citations_by_month.values())
+    avg_citations = sum(monthly_values) / len(monthly_values)
+    max_citations = max(monthly_values)
+    
+    # Simple rule: burst if any month has 3x the average (and at least 3 citations)
+    burst_threshold = max(avg_citations * 3, 3)
+    has_bursts = max_citations >= burst_threshold
+    
+    return {
+        'has_bursts': has_bursts,
+        'max_month_citations': max_citations,
+        'avg_citations_per_month': avg_citations,
+        'burst_strength': max_citations / max(avg_citations, 1) if has_bursts else 0
+    }
+
+def calculate_simple_temporal_profile(paper_id, paper_db):
+    """
+    Super simple temporal profile - just recent vs old citations.
+    """
+    paper = paper_db[paper_id]
+    total_citations = paper['citation_count']
+    
+    if total_citations < 3:
+        return {
+            'pattern': '📊 Low Activity',
+            'score': 0,
+            'recent_ratio': 0,
+            'citations_per_year': 0,
+            'burst_strength': 0
+        }
+    
+        # Count recent vs old citations (month-level precision)
+    current_year = 2025
+    current_month = 1  # January 2025
+    current_month_key = current_year * 100 + current_month
+    
+    recent_citations = 0  # Last 12 months
+    very_recent_citations = 0  # Last 6 months
+    
+    for citing_id in paper['cited_by']:
+        if citing_id in paper_db:
+            citing_year = paper_db[citing_id].get('year')
+            citing_month = paper_db[citing_id].get('month', 6)
             
-    elif decay_weighted['recency_ratio'] > 0.7 and velocity_trends['current_velocity'] > 5:
-        if burst_pattern == "periodic" and burst_frequency > 0.3:
-            pattern = "🔥 Persistent Hot Topic"  # Repeatedly important
-        elif burst_pattern == "no_bursts":
-            pattern = "📈 Steady Climber"  # Consistent growth without drama
-        else:
-            pattern = "⚡ Current Focus"  # Recently active
-            
-    elif decay_weighted['raw_citations'] > 50 and decay_weighted['recency_ratio'] < 0.3:
-        if burst_pattern == "singular" and burst_profile['max_burst_strength'] > 5:
-            pattern = "🏛️ Seminal Work"  # One major historical impact
-        elif burst_pattern == "periodic":
-            pattern = "📚 Enduring Classic"  # Periodically rediscovered
-        else:
-            pattern = "🗿 Historical Foundation"  # Important but aging
-            
-    elif burst_profile['max_burst_strength'] > 3 and not burst_profile['is_currently_bursting']:
-        if burst_pattern == "periodic":
-            pattern = "🌊 Cyclical Influence"  # Comes and goes
-        elif burst_pattern == "escalating":
-            pattern = "⏸️ Paused Momentum"  # Was building, now quiet
-        else:
-            pattern = "📉 Past Peak"  # Had moment, now fading
-            
-    elif velocity_trends['acceleration'] > 0 and decay_weighted['raw_citations'] < 10:
-        if burst_profile.get('burst_periods'):
-            pattern = "🌱 Early Breakthrough"  # Young but showing bursts
-        else:
-            pattern = "🌿 Gradual Emergence"  # Slow steady growth
-            
-    elif burst_pattern == "periodic" and burst_frequency > 0.4:
-        pattern = "⚡ Attention Magnet"  # Repeatedly draws bursts
-        
-    elif burst_pattern == "no_bursts" and decay_weighted['raw_citations'] > 20:
-        pattern = "🏔️ Steady Foundation"  # Reliable but not exciting
-        
+            if citing_year:
+                citing_month_key = citing_year * 100 + citing_month
+                months_ago = calculate_months_between(citing_month_key, current_month_key)
+                
+                if months_ago <= 12:  # Last 12 months
+                    recent_citations += 1
+                if months_ago <= 6:   # Last 6 months  
+                    very_recent_citations += 1
+    
+    recency_ratio = recent_citations / total_citations
+    very_recent_ratio = very_recent_citations / total_citations
+    citations_per_year = total_citations / max(1, current_year - (paper.get('year') or current_year))
+    
+    # Simple burst check
+    burst_info = detect_simple_citation_bursts(paper_id, paper_db)
+    
+    # Simple pattern classification using month-level precision (6 patterns only)
+    if burst_info['has_bursts'] and very_recent_ratio > 0.3:  # Active burst in last 6 months
+        pattern = "🔥 Hot & Bursting"
+    elif very_recent_ratio > 0.4:  # High activity in last 6 months
+        pattern = "🌱 Recently Active"
+    elif total_citations > 20 and recency_ratio < 0.2:  # Old citations, low recent activity
+        pattern = "🏛️ Established Classic"
+    elif citations_per_year > 5:
+        pattern = "⚡ High Impact"
+    elif burst_info['has_bursts']:
+        pattern = "💫 Had Bursts"
     else:
-        pattern = "📊 Standard Trajectory"  # Normal citation pattern
+        pattern = "📊 Standard"
     
-    # Enhanced scoring with burst characteristics
-    # Weight burst score by pattern quality
-    pattern_multiplier = {
-        "escalating": 1.5,
-        "sustained": 1.3,
-        "periodic": 1.0,
-        "singular": 0.8,
-        "no_bursts": 0.5
-    }.get(burst_pattern, 1.0)
-    
-    adjusted_burst_score = burst_profile['max_burst_strength'] * pattern_multiplier
-    
-    # Penalize spike-only patterns
-    if current_burst_type == "spike" and burst_pattern != "periodic":
-        adjusted_burst_score *= 0.7  # Likely conference-driven, not organic
-    
-    # Calculate momentum (combines velocity and burst quality)
-    momentum_score = velocity_trends['current_velocity'] * (1 + adjusted_burst_score/10)
-    
-    combined_temporal_score = (
-        0.35 * momentum_score +
-        0.25 * adjusted_burst_score +
-        0.25 * decay_weighted['recency_ratio'] +
-        0.15 * velocity_trends.get('acceleration', 0)
-    )
+    # Simple combined score
+    score = citations_per_year + (recency_ratio * 10) + (burst_info['burst_strength'] * 2)
     
     return {
         'pattern': pattern,
-        'pattern_confidence': calculate_pattern_confidence(burst_profile, velocity_trends),
-        'momentum_score': momentum_score,
-        'burst_score': adjusted_burst_score,
-        'recency_score': decay_weighted['recency_ratio'],
-        'combined_temporal_score': combined_temporal_score,
-        'burst_pattern': burst_pattern,
-        'current_burst_type': current_burst_type,
-        'velocity_trends': velocity_trends,
-        'burst_profile': burst_profile,
-        'decay_weighted': decay_weighted
+        'score': score,
+        'recent_ratio': recency_ratio,
+        'citations_per_year': citations_per_year,
+        'burst_strength': burst_info['burst_strength'],
+        'total_citations': total_citations
     }
 
 def calculate_pattern_confidence(burst_profile, velocity_trends):
@@ -1191,9 +888,9 @@ def calculate_pattern_confidence(burst_profile, velocity_trends):
     # More data = higher confidence
     total_months = burst_profile.get('total_burst_months', 0) + velocity_trends.get('months_active', 0)
     
-    if total_months < 6:
+    if total_months < 3:
         return "low"
-    elif total_months < 12:
+    elif total_months < 9:
         return "medium"
     else:
         return "high"
@@ -1213,29 +910,6 @@ def build_monthly_citations(paper_id, paper_db):
     
     return citations_by_month
 
-def classify_phase(trend, current_citations, transitions):
-    """Classify current influence phase based on trajectory"""
-    if current_citations == 0:
-        return 'dormant'
-    elif trend > 1.5:
-        return 'exponential_growth'
-    elif trend > 0.5:
-        return 'steady_growth'
-    elif trend > -0.5:
-        return 'plateau'
-    elif trend > -1.5:
-        return 'slow_decline'
-    else:
-        return 'rapid_decline'
-
-def calculate_months_since(transitions, current_month):
-    """Calculate months since last transition"""
-    if not transitions:
-        return 0
-    
-    last_transition = max(transitions, key=lambda x: x['month'])
-    return calculate_month_diff(last_transition['month'], current_month)
-
 def calculate_month_diff(start_month, end_month):
     """Calculate difference in months between two month keys (YYYYMM format)"""
     start_year = start_month // 100
@@ -1244,6 +918,15 @@ def calculate_month_diff(start_month, end_month):
     end_month_num = end_month % 100
     
     return (end_year - start_year) * 12 + (end_month_num - start_month_num)
+
+def calculate_months_between(from_month_key, to_month_key):
+    """Calculate months between two month keys (YYYYMM format). Positive means from_month is earlier."""
+    from_year = from_month_key // 100
+    from_month = from_month_key % 100
+    to_year = to_month_key // 100
+    to_month = to_month_key % 100
+    
+    return (to_year - from_year) * 12 + (to_month - from_month)
 
 def get_citations_in_first_n_months(paper_id, paper_db, n=12):
     """Get citation counts for first N months after publication"""
@@ -1275,28 +958,10 @@ def get_citations_in_first_n_months(paper_id, paper_db, n=12):
     
     return monthly_citations
 
-
-
-def calculate_self_citation_ratio(paper_id, paper_db, months=6):
-    """Calculate self-citation ratio (simplified - assumes different arxiv_ids = different authors)"""
-    # Since we don't have author data, we'll return a conservative estimate
-    # This is a placeholder that could be enhanced with actual author information
-    return 0.1  # Assume 10% self-citation rate as default
-
-def classify_trajectory(breakthrough_score):
-    """Classify predicted trajectory based on breakthrough score"""
-    if breakthrough_score > 0.7:
-        return 'breakthrough_potential'
-    elif breakthrough_score > 0.5:
-        return 'strong_growth_expected'
-    elif breakthrough_score > 0.3:
-        return 'moderate_growth_expected'
-    else:
-        return 'limited_growth_expected'
-
 def create_foundation_papers_table(paper_db, top_n=20):
     """
     Create table of foundation papers - seminal work the field built upon.
+    Includes ALL papers (no exclusions) since foundation papers are historically important.
     
     Returns:
         pd.DataFrame: Foundation papers with sustained influence
@@ -1306,8 +971,7 @@ def create_foundation_papers_table(paper_db, top_n=20):
     foundation_data = []
     
     for arxiv_id, paper in paper_db.items():
-        if (paper.get('foundation_score', 0) > 0 and 
-            not should_exclude_from_gui_analysis(arxiv_id)):
+        if paper.get('foundation_score', 0) > 0:  # No exclusions for foundation papers
             foundation_data.append({
                 'Rank': 0,  # Will be filled below
                 'ArXiv ID': arxiv_id,
@@ -1384,117 +1048,78 @@ def create_frontier_papers_table(paper_db, top_n=20):
 
 def create_citation_velocity_table(paper_db, top_n=20):
     """
-    Create enhanced table of papers with highest citation velocity and momentum.
-    Now includes confidence metrics and trend analysis from improved calculations.
+    Create simple citation velocity table using basic metrics.
     
     Returns:
-        pd.DataFrame: Papers with comprehensive velocity analysis
+        pd.DataFrame: Papers with basic velocity analysis
     """
-    print(f"\nCreating Top {top_n} Citation Velocity Papers table (with improved momentum)...")
+    print(f"\nCreating Top {top_n} Citation Velocity Papers table (simplified)...")
     
     velocity_data = []
     
     for arxiv_id, paper in paper_db.items():
-        if paper['citation_count'] >= 5:  # Need sufficient citations for velocity analysis
-            velocity_metrics = calculate_monthly_citation_velocity(arxiv_id, paper_db)
+        if (paper['citation_count'] >= 3 and  # Need sufficient citations for velocity analysis
+            not should_exclude_from_gui_analysis(arxiv_id)):  # Exclude non-GUI papers
             
-            if velocity_metrics['velocity'] > 0:
-                velocity_data.append({
-                    'Rank': 0,  # Will be filled below
-                    'ArXiv ID': arxiv_id,
-                    'Title': paper['title'],
-                    'Year': paper['year'] or 'N/A',
-                    'Citations': paper['citation_count'],
-                    'Velocity': velocity_metrics['velocity'],
-                    'Acceleration': velocity_metrics['acceleration'],
-                    'Momentum': velocity_metrics['momentum'],  # Now physics-inspired!
-                    'Confidence': velocity_metrics.get('confidence', 'medium').title(),
-                    'Trend': velocity_metrics.get('trend_direction', 'stable').title(),
-                    'Volatility': velocity_metrics.get('volatility', 0),
-                    'Is Emerging': 'Yes' if velocity_metrics.get('is_emerging', False) else 'No',
-                    'Is Declining': 'Yes' if velocity_metrics.get('is_declining', False) else 'No',
-                    'Months Active': velocity_metrics['months_active'],
-                    'PageRank': paper['pagerank']
-                })
+            # Simple velocity calculation: citations per year since publication
+            paper_year = paper.get('year')
+            years_since_pub = max(1, 2025 - paper_year)
+            velocity = paper['citation_count'] / years_since_pub
+            
+            # Month-level recent activity check (last 12 months)
+            current_year = 2025
+            current_month = 8  # January 2025
+            current_month_key = current_year * 100 + current_month
+            
+            recent_citations = 0  # Last 6 months
+            very_recent_citations = 0  # Last 3 months
+            
+            for citing_id in paper['cited_by']:
+                if citing_id in paper_db:
+                    citing_year = paper_db[citing_id].get('year')
+                    citing_month = paper_db[citing_id].get('month', 6)  # Default to June if missing
+                    
+                    if citing_year:
+                        citing_month_key = citing_year * 100 + citing_month
+                        months_ago = calculate_months_between(citing_month_key, current_month_key)
+                        
+                        if months_ago <= 6:  # Last 6 months
+                            recent_citations += 1
+                        if months_ago <= 3:   # Last 3 months
+                            very_recent_citations += 1
+            
+            recent_ratio = recent_citations / max(paper['citation_count'], 1)
+            
+            velocity_data.append({
+                'Rank': 0,  # Will be filled below
+                'ArXiv ID': arxiv_id,
+                'Title': paper['title'],
+                'Year': paper['year'] or 'N/A',
+                'Citations': paper['citation_count'],
+                'Citations/Year': velocity,
+                'Recent (6mo)': recent_citations,
+                'Very Recent (3mo)': very_recent_citations,
+                'Recent Ratio': recent_ratio,
+                'PageRank': paper['pagerank']
+            })
     
-    # Create and sort velocity table by improved momentum
+    # Create and sort velocity table by recent activity (most relevant for fast-moving field)
     velocity_df = pd.DataFrame(velocity_data)
-    velocity_df = velocity_df.sort_values('Momentum', ascending=False).head(top_n)
+    velocity_df = velocity_df.sort_values(['Recent Ratio', 'Citations/Year'], ascending=[False, False]).head(top_n)
     velocity_df['Rank'] = range(1, len(velocity_df) + 1)
     
-    # Format for display - streamlined columns
-    display_cols = ['Rank', 'ArXiv ID', 'Title', 'Year', 'Citations', 'Velocity', 
-                   'Acceleration', 'Momentum', 'Trend', 'Volatility']
+    # Format for display
+    display_cols = ['Rank', 'ArXiv ID', 'Title', 'Year', 'Citations', 'Citations/Year', 
+                   'Recent (6mo)', 'Very Recent (3mo)', 'Recent Ratio']
     display_df = velocity_df[display_cols].copy()
-    display_df['Velocity'] = display_df['Velocity'].round(3)
-    display_df['Acceleration'] = display_df['Acceleration'].round(3)
-    display_df['Momentum'] = display_df['Momentum'].round(3)
-    display_df['Volatility'] = display_df['Volatility'].round(3)
+    display_df['Citations/Year'] = display_df['Citations/Year'].round(2)
+    display_df['Recent Ratio'] = display_df['Recent Ratio'].round(3)
     
-    # Save as markdown table with clean description
+    # Save as markdown table
     save_table_as_markdown(display_df, 'citation_velocity_papers.md', 
-                          f'Top {top_n} Papers by Citation Velocity and Momentum')
-    
-    print(f"  ✅ Enhanced momentum calculation with confidence metrics")
-    print(f"  ✅ Proper acceleration (first derivative)")
-    print(f"  ✅ Edge case handling for emerging/declining papers")
+                          f'Top {top_n} Papers by Recent Activity (6-Month Focus)')
     
     return velocity_df
-
-def create_influence_phases_table(paper_db, top_n=20):
-    """
-    Create table of papers showing influence phase analysis.
-    
-    Returns:
-        pd.DataFrame: Papers with phase analysis
-    """
-    print(f"\nCreating Top {top_n} Influence Phases Analysis table...")
-    
-    phase_data = []
-    
-    for arxiv_id, paper in paper_db.items():
-        if paper['citation_count'] >= 10:  # Need sufficient history for phase analysis
-            phase_analysis = detect_influence_phases(arxiv_id, paper_db)
-            
-            if phase_analysis.get('current_phase', 'too_early') != 'too_early':
-                num_transitions = len(phase_analysis.get('transitions', []))
-                phase_data.append({
-                    'Rank': 0,  # Will be filled below
-                    'ArXiv ID': arxiv_id,
-                    'Title': paper['title'],
-                    'Year': paper['year'] or 'N/A',
-                    'Citations': paper['citation_count'],
-                    'Current Phase': phase_analysis['current_phase'],
-                    'Transitions': num_transitions,
-                    'Months Since Last': phase_analysis.get('months_since_last_transition', 0),
-                    'PageRank': paper['pagerank']
-                })
-    
-    # Create and sort phase table
-    phase_df = pd.DataFrame(phase_data)
-    if not phase_df.empty:
-        # Sort by number of transitions (more dynamic papers) and citations
-        phase_df = phase_df.sort_values(['Transitions', 'Citations'], ascending=[False, False]).head(top_n)
-        phase_df['Rank'] = range(1, len(phase_df) + 1)
-        
-        # Format for display
-        display_cols = ['Rank', 'ArXiv ID', 'Title', 'Year', 'Citations', 'Current Phase', 
-                       'Transitions', 'Months Since Last', 'PageRank']
-        display_df = phase_df[display_cols].copy()
-        display_df['PageRank'] = display_df['PageRank'].round(6)
-        
-        # Save as markdown table
-        save_table_as_markdown(display_df, 'influence_phases_papers.md', 
-                              f'Top {top_n} Papers by Influence Phase Dynamics')
-    else:
-        print("  No papers found with sufficient history for phase analysis")
-        phase_df = pd.DataFrame()
-    
-    return phase_df
-
-# Removed create_citation_waves_table - redundant analysis
-# The wave detection was conceptually flawed and overlapped with burst detection
-# The sophisticated burst analysis in temporal influence profiles provides better insights
 
 def create_future_impact_table(paper_db, top_n=5):
     """
@@ -1869,7 +1494,6 @@ def analyze_adoption_timelines(paper_db):
         # Calculate statistics
         months_to_peak_list = [d['months_to_peak'] for d in adoption_data]
         adoption_velocities = [d['adoption_velocity'] for d in adoption_data]
-        sustained_ratios = [d['sustained_ratio'] for d in adoption_data]
         
         # Categorize adoption patterns
         fast_adopters = [d for d in adoption_data if d['months_to_peak'] <= 12]
@@ -1921,63 +1545,94 @@ def save_table_as_markdown(df, filename, title):
     
     print(f"Saved markdown table: {full_path}")
 
-def create_citation_burst_patterns_visualization(paper_db):
+def save_temporal_table_with_explanation(df, filename, title):
     """
-    Create comprehensive burst patterns visualization using sophisticated burst detection.
-    Replaces the flawed "waves" analysis with proper burst pattern analysis.
+    Save temporal analysis table with detailed explanations of all metrics.
     """
-    print("Creating citation burst patterns visualization...")
+    # Ensure output directory exists
+    ensure_output_directory()
     
-    # Collect burst data for papers with interesting patterns
-    burst_papers = []
-    for arxiv_id, paper in paper_db.items():
-        if (paper['citation_count'] >= 15 and 
-            not should_exclude_from_gui_analysis(arxiv_id)):
-            burst_profile = detect_citation_bursts(arxiv_id, paper_db)
-            if burst_profile['max_burst_strength'] > 0:
-                citations_timeline = build_monthly_citations(arxiv_id, paper_db)
-                burst_papers.append({
-                    'arxiv_id': arxiv_id,
-                    'title': paper['title'][:50] + "..." if len(paper['title']) > 50 else paper['title'],
-                    'year': paper['year'],
-                    'citations_timeline': citations_timeline,
-                    'burst_profile': burst_profile,
-                    'total_citations': paper['citation_count']
-                })
+    # Create full file path
+    full_path = os.path.join(OUTPUT_DIR, filename)
     
-    if not burst_papers:
-        print("No papers found with sufficient citation bursts for visualization.")
-        return
+    # Create comprehensive markdown content
+    markdown_content = f"# {title}\n\n"
     
-    # Sort by burst strength and total citations
-    burst_papers.sort(key=lambda x: (x['burst_profile']['max_burst_strength'], x['total_citations']), reverse=True)
-    top_burst_papers = burst_papers[:12]  # Top 12 for readability
+    # Add detailed explanation section
+    markdown_content += """## 📊 How to Interpret This Table
+
+This table shows papers with the most dynamic temporal citation patterns, focusing on **recent activity** and **momentum**.
+
+### 🔢 **Key Metrics Explained**
+
+#### **Score** (Combined Temporal Score)
+- **Formula**: `Citations/Year + (Recent Ratio × 10) + (Burst Strength × 2)`
+- **Range**: 0-100+ (higher = more temporally significant)
+- **Interpretation**: 
+  - **60+**: Very high temporal significance
+  - **40-59**: High temporal significance  
+  - **20-39**: Moderate temporal significance
+  - **<20**: Lower temporal significance
+
+#### **Recent Ratio** (6-Month Focus)
+- **Definition**: Fraction of total citations from papers published in **last 6 months**
+- **Range**: 0.0-1.0 (higher = more recently active)
+- **Interpretation**:
+  - **0.6+**: Very hot right now, getting lots of recent attention
+  - **0.4-0.6**: Good recent activity
+  - **0.2-0.4**: Some recent interest
+  - **<0.2**: Mostly older citations, established work
+
+#### **Citations/Year** (Overall Velocity)
+- **Definition**: Total citations divided by years since publication
+- **Interpretation**: Shows overall citation velocity regardless of timing
+
+#### **Burst Strength** (Citation Spikes)
+- **Definition**: Peak monthly citations ÷ average monthly citations
+- **Range**: 0-10+ (higher = more bursty citation pattern)
+- **Interpretation**:
+  - **3+**: Clear citation bursts (conferences, viral moments)
+  - **1-3**: Some citation clustering
+  - **0**: Steady citation pattern
+
+### 🏷️ **Pattern Categories**
+
+| Pattern | Meaning | Criteria |
+|---------|---------|----------|
+| 🔥 **Hot & Bursting** | Active burst + high recent activity | Burst detected + >30% very recent citations |
+| 🌱 **Recently Active** | High activity in last 6 months | >40% very recent citations |
+| ⚡ **High Impact** | Strong overall velocity | >5 citations/year |
+| 🏛️ **Established Classic** | Old but foundational | >20 citations + <20% recent activity |
+| 💫 **Had Bursts** | Past citation spikes | Burst detected but not currently hot |
+| 📊 **Standard** | Normal citation pattern | Doesn't fit other categories |
+
+### 💡 **How to Use This Data**
+
+- **For Current Trends**: Focus on high Recent Ratio (>0.5) papers
+- **For Impact**: Look at Citations/Year combined with Recent Ratio
+- **For Momentum**: Check Score + Pattern combination
+- **For Timing**: Burst Strength shows when papers "went viral"
+
+---
+
+## 📈 Results Table
+
+"""
     
-    # Create figure with subplots
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
-    fig.suptitle('Citation Burst Patterns: Temporal Dynamics of Influence', fontsize=16, fontweight='bold')
+    # Add the actual table
+    markdown_table = df.to_markdown(index=False, tablefmt='github')
+    markdown_content += markdown_table
     
-    # 1. Improved Burst Timeline Heatmap (top-left)
-    create_improved_burst_heatmap(ax1, paper_db, top_papers=8)
+    # Add metadata
+    markdown_content += f"\n\n---\n*Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}*\n"
+    markdown_content += f"*Total entries: {len(df)}*\n"
+    markdown_content += "*Analysis uses month-level precision for maximum accuracy in fast-moving AI research*\n"
     
-    # 2. Burst Characteristics Scatter (top-right)  
-    create_burst_scatter(ax2, burst_papers)
+    # Save to file
+    with open(full_path, 'w', encoding='utf-8') as f:
+        f.write(markdown_content)
     
-    # 3. Burst Pattern Types Comparison (bottom-left)
-    create_burst_pattern_comparison(ax3, burst_papers)
-    
-    # 4. Currently Active Bursts (bottom-right)
-    create_active_bursts_plot(ax4, burst_papers)
-    
-    plt.tight_layout()
-    
-    # Save visualization
-    output_path = os.path.join(OUTPUT_DIR, 'citation_burst_patterns.png')
-    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white')
-    plt.close()
-    
-    print(f"Saved citation burst patterns visualization: {output_path}")
-    print(f"Analyzed {len(burst_papers)} papers with burst patterns")
+    print(f"Saved temporal analysis table with explanations: {full_path}")
 
 def create_improved_burst_heatmap(ax, paper_db, top_papers=12):
     """
@@ -2570,62 +2225,50 @@ def create_field_acceleration_visualization(paper_db):
     plt.close()
     print(f"Saved field acceleration visualization: {accel_path}")
 
-def create_temporal_influence_profiles_table(paper_db, top_n=25):
+def create_simple_temporal_table(paper_db, top_n=20):
     """
-    Create comprehensive temporal influence profiles table.
+    Create simplified temporal analysis table.
     """
-    print(f"\nCreating Top {top_n} Temporal Influence Profiles table...")
+    print(f"\nCreating Top {top_n} Temporal Analysis table (simplified)...")
     
-    profile_data = []
+    temporal_data = []
     
     for arxiv_id, paper in paper_db.items():
-        if (paper['citation_count'] >= 8 and  # Need sufficient citations for meaningful profiles
+        if (paper['citation_count'] >= 5 and 
             not should_exclude_from_gui_analysis(arxiv_id)):
-            profile = calculate_temporal_influence_profile(arxiv_id, paper_db)
             
-            # Get enhanced burst pattern info
-            burst_pattern = profile['burst_pattern']
-            burst_frequency = profile['burst_profile'].get('burst_frequency', 0)
-            current_burst_type = profile.get('current_burst_type', 'N/A')
-            pattern_confidence = profile.get('pattern_confidence', 'medium')
+            profile = calculate_simple_temporal_profile(arxiv_id, paper_db)
             
-            profile_data.append({
-                'Rank': 0,  # Will be filled below
+            temporal_data.append({
+                'Rank': 0,
                 'ArXiv ID': arxiv_id,
                 'Title': paper['title'],
                 'Year': paper['year'] or 'N/A',
                 'Pattern': profile['pattern'],
-                'Pattern Confidence': pattern_confidence.title(),
                 'Citations': paper['citation_count'],
-                'Temporal Score': profile['combined_temporal_score'],
-                'Momentum Score': profile['momentum_score'],
-                'Burst Score': profile['burst_score'],
-                'Burst Pattern': burst_pattern.replace('_', ' ').title(),
-                'Current Burst Type': current_burst_type.title() if current_burst_type and current_burst_type != 'N/A' else 'N/A',
-                'Burst Frequency': burst_frequency,
-                'Currently Bursting': 'Yes' if profile['burst_profile']['is_currently_bursting'] else 'No',
-                'Is Accelerating': 'Yes' if profile['velocity_trends']['is_accelerating'] else 'No'
+                'Score': profile['score'],
+                'Recent Ratio': profile['recent_ratio'],
+                'Citations/Year': profile['citations_per_year'],
+                'Burst Strength': profile['burst_strength']
             })
     
-    # Create and sort profiles table
-    profiles_df = pd.DataFrame(profile_data)
-    profiles_df = profiles_df.sort_values('Temporal Score', ascending=False).head(top_n)
-    profiles_df['Rank'] = range(1, len(profiles_df) + 1)
+    # Sort and format
+    df = pd.DataFrame(temporal_data)
+    df = df.sort_values('Score', ascending=False).head(top_n)
+    df['Rank'] = range(1, len(df) + 1)
     
-    # Format for display
-    display_cols = ['Rank', 'ArXiv ID', 'Title', 'Year', 'Pattern', 'Pattern Confidence', 
-                   'Citations', 'Temporal Score', 'Momentum Score', 'Burst Score', 
-                   'Burst Pattern', 'Current Burst Type', 'Currently Bursting', 'Is Accelerating']
-    display_df = profiles_df[display_cols].copy()
-    display_df['Temporal Score'] = display_df['Temporal Score'].round(3)
-    display_df['Momentum Score'] = display_df['Momentum Score'].round(3)
-    display_df['Burst Score'] = display_df['Burst Score'].round(3)
+    # Clean up display
+    display_df = df[['Rank', 'ArXiv ID', 'Title', 'Year', 'Pattern', 'Citations', 
+                    'Score', 'Recent Ratio', 'Citations/Year', 'Burst Strength']].copy()
+    display_df['Score'] = display_df['Score'].round(2)
+    display_df['Recent Ratio'] = display_df['Recent Ratio'].round(3)
+    display_df['Citations/Year'] = display_df['Citations/Year'].round(1)
+    display_df['Burst Strength'] = display_df['Burst Strength'].round(1)
     
-    # Save as markdown table
-    save_table_as_markdown(display_df, 'temporal_influence_profiles.md', 
-                          f'Top {top_n} Papers by Temporal Influence Profile')
+    save_temporal_table_with_explanation(display_df, 'temporal_analysis_simple.md', 
+                                        f'Top {top_n} Papers by Temporal Analysis (Simplified)')
     
-    return profiles_df
+    return df
 
 def create_paradigm_shift_papers_table(paper_db):
     """
@@ -2804,164 +2447,6 @@ def create_adoption_timeline_visualization(paper_db):
     plt.close()
     print(f"Saved adoption timeline visualization: {timeline_path}")
 
-def create_citation_velocity_visualization(paper_db):
-    """
-    Create compelling visualization of citation velocity and momentum patterns.
-    """
-    print("Creating citation velocity and momentum visualization...")
-    
-    # Collect velocity data for all papers with sufficient citations
-    velocity_data = []
-    
-    for arxiv_id, paper in paper_db.items():
-        if paper['citation_count'] >= 5:  # Need sufficient citations for velocity analysis
-            velocity_metrics = calculate_monthly_citation_velocity(arxiv_id, paper_db)
-            
-            if velocity_metrics['velocity'] > 0:
-                velocity_data.append({
-                    'arxiv_id': arxiv_id,
-                    'title': paper['title'][:50] + "..." if len(paper['title']) > 50 else paper['title'],
-                    'year': paper['year'] or 2020,  # Default year if missing
-                    'citations': paper['citation_count'],
-                    'velocity': velocity_metrics['velocity'],
-                    'acceleration': velocity_metrics['acceleration'],
-                    'momentum': velocity_metrics['momentum'],
-                    'months_active': velocity_metrics['months_active'],
-                    'is_accelerating': velocity_metrics['acceleration'] > 0.5
-                })
-    
-    if not velocity_data:
-        print("  No velocity data available for visualization")
-        return
-    
-    # Create comprehensive visualization
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(20, 16))
-    
-    # Extract data for plotting
-    years = [d['year'] for d in velocity_data]
-    velocities = [d['velocity'] for d in velocity_data]
-    momentums = [d['momentum'] for d in velocity_data]
-    citations = [d['citations'] for d in velocity_data]
-    accelerating = [d['is_accelerating'] for d in velocity_data]
-    
-    # Plot 1: Year vs Velocity with Momentum as bubble size
-    scatter1 = ax1.scatter(years, velocities, 
-                          s=[m * 20 + 30 for m in momentums],  # Size based on momentum
-                          c=citations, cmap='viridis', 
-                          alpha=0.7, edgecolors='black', linewidth=0.5)
-    
-    ax1.set_title('Citation Velocity by Publication Year\n(Bubble size = Momentum, Color = Citation count)', 
-                  fontsize=14, fontweight='bold')
-    ax1.set_xlabel('Publication Year', fontsize=12)
-    ax1.set_ylabel('Citation Velocity (citations/month)', fontsize=12)
-    ax1.grid(True, alpha=0.3)
-    
-    # Add colorbar for citations
-    cbar1 = plt.colorbar(scatter1, ax=ax1)
-    cbar1.set_label('Total Citations', fontsize=11)
-    
-    # Annotate top velocity papers
-    top_velocity_papers = sorted(velocity_data, key=lambda x: x['velocity'], reverse=True)[:5]
-    for i, paper in enumerate(top_velocity_papers):
-        ax1.annotate(f"{paper['title'][:25]}...", 
-                    (paper['year'], paper['velocity']),
-                    xytext=(10, 10 + i*15), textcoords='offset points',
-                    bbox=dict(boxstyle="round,pad=0.3", facecolor='yellow', alpha=0.8),
-                    fontsize=8, ha='left',
-                    arrowprops=dict(arrowstyle='->', color='red', alpha=0.7))
-    
-    # Plot 2: Momentum vs Citations with acceleration status
-    colors = ['red' if acc else 'blue' for acc in accelerating]
-    labels = ['Accelerating' if acc else 'Stable/Declining' for acc in accelerating]
-    
-    scatter2 = ax2.scatter(citations, momentums, c=colors, alpha=0.7, s=60, edgecolors='black', linewidth=0.5)
-    ax2.set_title('Momentum vs Total Citations\n(Red = Accelerating, Blue = Stable/Declining)', 
-                  fontsize=14, fontweight='bold')
-    ax2.set_xlabel('Total Citations', fontsize=12)
-    ax2.set_ylabel('Momentum Score', fontsize=12)
-    ax2.grid(True, alpha=0.3)
-    
-    # Add trend line
-    if len(citations) > 3:
-        z = np.polyfit(citations, momentums, 1)
-        p = np.poly1d(z)
-        ax2.plot(sorted(citations), p(sorted(citations)), "g--", alpha=0.8, linewidth=2, 
-                label=f'Trend: {z[0]:.3f}x + {z[1]:.2f}')
-        ax2.legend()
-    
-    # Plot 3: Velocity distribution by year
-    years_unique = sorted(set(years))
-    velocity_by_year = {year: [] for year in years_unique}
-    
-    for data in velocity_data:
-        velocity_by_year[data['year']].append(data['velocity'])
-    
-    # Box plot of velocity by year
-    box_data = [velocity_by_year[year] for year in years_unique if velocity_by_year[year]]
-    box_labels = [str(year) for year in years_unique if velocity_by_year[year]]
-    
-    bp = ax3.boxplot(box_data, labels=box_labels, patch_artist=True)
-    
-    # Color boxes by year (gradient)
-    colors_gradient = plt.cm.plasma(np.linspace(0, 1, len(bp['boxes'])))
-    for patch, color in zip(bp['boxes'], colors_gradient):
-        patch.set_facecolor(color)
-        patch.set_alpha(0.7)
-    
-    ax3.set_title('Citation Velocity Distribution by Year', fontsize=14, fontweight='bold')
-    ax3.set_xlabel('Publication Year', fontsize=12)
-    ax3.set_ylabel('Citation Velocity (citations/month)', fontsize=12)
-    ax3.grid(True, alpha=0.3)
-    
-    # Plot 4: Top momentum papers ranking
-    top_momentum_papers = sorted(velocity_data, key=lambda x: x['momentum'], reverse=True)[:15]
-    
-    paper_names = [p['title'][:30] + "..." if len(p['title']) > 30 else p['title'] 
-                   for p in top_momentum_papers]
-    momentum_scores = [p['momentum'] for p in top_momentum_papers]
-    paper_years = [p['year'] for p in top_momentum_papers]
-    
-    # Color bars by year
-    colors_bars = plt.cm.viridis([(y - min(paper_years)) / (max(paper_years) - min(paper_years)) 
-                                  for y in paper_years])
-    
-    bars = ax4.barh(range(len(paper_names)), momentum_scores, color=colors_bars, alpha=0.8)
-    ax4.set_yticks(range(len(paper_names)))
-    ax4.set_yticklabels(paper_names, fontsize=9)
-    ax4.set_xlabel('Momentum Score', fontsize=12)
-    ax4.set_title('Top 15 Papers by Citation Momentum', fontsize=14, fontweight='bold')
-    ax4.grid(True, alpha=0.3, axis='x')
-    
-    # Add year labels on bars
-    for i, (bar, year) in enumerate(zip(bars, paper_years)):
-        width = bar.get_width()
-        ax4.text(width + 0.1, bar.get_y() + bar.get_height()/2, 
-                f'{year}', ha='left', va='center', fontweight='bold', fontsize=8)
-    
-    # Overall layout
-    plt.tight_layout()
-    
-    # Add summary statistics
-    summary_text = f"""Citation Velocity Analysis Summary:
-• Total papers analyzed: {len(velocity_data)}
-• Median velocity: {np.median(velocities):.2f} citations/month
-• Papers accelerating: {sum(accelerating)} ({(sum(accelerating)/len(accelerating)*100):.1f}%)
-• Highest velocity: {max(velocities):.2f} citations/month
-• Year with highest avg velocity: {max(years_unique, key=lambda y: np.mean(velocity_by_year[y]) if velocity_by_year[y] else 0)}"""
-    
-    fig.text(0.02, 0.02, summary_text, fontsize=10, 
-             bbox=dict(boxstyle="round,pad=0.5", facecolor='lightcyan', alpha=0.9),
-             verticalalignment='bottom')
-    
-    plt.subplots_adjust(bottom=0.15)
-    
-    # Save visualization
-    ensure_output_directory()
-    velocity_viz_path = os.path.join(OUTPUT_DIR, 'citation_velocity_momentum_analysis.png')
-    plt.savefig(velocity_viz_path, dpi=300, bbox_inches='tight')
-    plt.close()
-    print(f"Saved citation velocity visualization: {velocity_viz_path}")
-
 def generate_summary_statistics(paper_db, graph):
     """
     Generate and display comprehensive summary statistics.
@@ -3079,15 +2564,14 @@ def main():
     # Research contributions (field infrastructure)
     create_benchmarks_datasets_models_tables(papers)
     
-    # High-value temporal insights
-    create_temporal_influence_profiles_table(paper_db)  # Best comprehensive view
-    create_citation_velocity_table(paper_db)  # Enhanced with physics-inspired momentum
+    # Simplified temporal insights
+    create_simple_temporal_table(paper_db)  # Simplified approach - much cleaner
+    create_citation_velocity_table(paper_db)  # Keep for comparison (but could be simplified too)
     create_paradigm_shift_papers_table(paper_db)
     create_future_impact_table(paper_db)  # Predictive value
     
     # Powerful visualizations
     create_influential_papers_timeline(paper_db)  # Keep this - it's visually effective
-    create_citation_burst_patterns_visualization(paper_db)  # NEW: Sophisticated burst patterns analysis
     
     # Field dynamics summary (text only, no redundant visualizations)
     print_field_dynamics_summary(paper_db)
@@ -3107,13 +2591,12 @@ def main():
     print(f"    • {OUTPUT_DIR}/datasets_papers.md")
     print(f"    • {OUTPUT_DIR}/models_papers.md")
     print(f"  Unique Temporal Insights:")
-    print(f"    • {OUTPUT_DIR}/temporal_influence_profiles.md (🔥 GOLD - patterns & dynamics)")
-    print(f"    • {OUTPUT_DIR}/citation_velocity_papers.md (✨ ENHANCED - improved momentum)")
+    print(f"    • {OUTPUT_DIR}/temporal_analysis_simple.md (🔥 SIMPLIFIED - clean patterns)")
+    print(f"    • {OUTPUT_DIR}/citation_velocity_papers.md (✨ SIMPLIFIED - clean velocity metrics)")
     print(f"    • {OUTPUT_DIR}/future_impact_signals_papers.md (predictive value)")
     print("")
     print("🎨 Generated Visualizations:")
     print(f"  • {OUTPUT_DIR}/influential_papers_timeline.png (field evolution)")
-    print(f"  • {OUTPUT_DIR}/citation_burst_patterns.png (sophisticated burst analysis)")
     print("")
     print("🎯 Key Insights: See Field Dynamics Summary above")
     print("=" * 70)
