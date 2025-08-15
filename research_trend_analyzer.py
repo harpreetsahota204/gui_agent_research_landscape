@@ -183,7 +183,6 @@ Respond with ONLY the JSON object, no additional text.
             # Apply chat template
             text = self.tokenizer.apply_chat_template(
                 messages,
-                tokenize=False,
                 add_generation_prompt=True,
                 enable_thinking=True
             )
@@ -199,8 +198,8 @@ Respond with ONLY the JSON object, no additional text.
             with torch.no_grad():
                 generated_ids = self.model.generate(
                     **model_inputs,
-                    max_new_tokens=4096,
-                    temperature=0.7,
+                    max_new_tokens=32768,
+                    temperature=0.6,
                     top_p=0.95,
                     top_k=20,
                     do_sample=True,
