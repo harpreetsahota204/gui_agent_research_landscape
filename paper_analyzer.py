@@ -113,7 +113,7 @@ class PaperAnalyzer:
         
         paper_content = "\n\n".join(content_parts)
         
-        return f"""You are an expert research analyst. Analyze the following research paper and extract key information.
+        return f"""You are an expert research analyst specializing in visual agents, OS agents, and GUI agents research. You are analyzing papers in the context of autonomous agents that interact with visual interfaces, operating systems, and graphical user interfaces.
 
 Paper to analyze:
 {paper_content}
@@ -125,11 +125,11 @@ Please provide your analysis in the following JSON format:
     "introduces_new_model": true/false,
     "introduces_new_dataset": true/false, 
     "introduces_new_benchmark": true/false,
-    "introduces_new_architecture": true/false,
+    "introduces_new_framework": true/false,
     "contribution": "Summary of how this work differs from Related Work"
 }}
 
-Respond with ONLY the JSON object, no additional text.
+Respond with ONLY the JSON object, no additional text. 
 """
     
     def generate_batch_responses(self, prompts):
