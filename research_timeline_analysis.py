@@ -196,16 +196,19 @@ def create_platform_trends_chart(data, output_dir):
     
     print(f"Top platforms: {', '.join(top_platforms[:5])}")
 
+def has_model_or_architecture_innovation(paper):
+    """Check if paper introduces new model OR architecture (avoiding double counting)."""
+    return paper.get('introduces_new_model') == True or paper.get('introduces_new_architecture') == True
+
 def create_innovation_trends_chart(data, output_dir):
     """Create a multi-line chart showing innovation type trends over time."""
     print("Creating innovation trends chart...")
     
-    # Innovation types to track
+    # Innovation types to track (combining model and architecture to avoid double counting)
     innovation_types = [
-        'introduces_new_model',
+        'introduces_new_model_or_architecture',  # Combined category
         'introduces_new_dataset', 
-        'introduces_new_benchmark',
-        'introduces_new_architecture'
+        'introduces_new_benchmark'
     ]
     
     # Track innovation types by year
@@ -214,9 +217,15 @@ def create_innovation_trends_chart(data, output_dir):
     for paper in data:
         year = paper.get('year')
         if year:
-            for innovation_type in innovation_types:
-                if paper.get(innovation_type) == True:
-                    innovation_by_year[year][innovation_type] += 1
+            # Handle combined model/architecture category
+            if has_model_or_architecture_innovation(paper):
+                innovation_by_year[year]['introduces_new_model_or_architecture'] += 1
+            
+            # Handle other categories normally
+            if paper.get('introduces_new_dataset') == True:
+                innovation_by_year[year]['introduces_new_dataset'] += 1
+            if paper.get('introduces_new_benchmark') == True:
+                innovation_by_year[year]['introduces_new_benchmark'] += 1
     
     # Create DataFrame for plotting
     years = sorted(innovation_by_year.keys())
@@ -224,10 +233,9 @@ def create_innovation_trends_chart(data, output_dir):
     
     # Clean up labels for display
     label_mapping = {
-        'introduces_new_model': 'New Models',
+        'introduces_new_model_or_architecture': 'New Models/Architectures',
         'introduces_new_dataset': 'New Datasets',
-        'introduces_new_benchmark': 'New Benchmarks', 
-        'introduces_new_architecture': 'New Architectures'
+        'introduces_new_benchmark': 'New Benchmarks'
     }
     
     for innovation_type in innovation_types:
@@ -241,7 +249,7 @@ def create_innovation_trends_chart(data, output_dir):
         plt.plot(years, innovation_data[innovation_type], marker='o', 
                 linewidth=2, markersize=6, label=label)
     
-    plt.title('Innovation Type Trends Over Time\nNumber of Papers by Contribution Type', 
+    plt.title('Innovation Type Trends Over Time\nNumber of Papers by Contribution Type (Models/Architectures Combined)', 
               fontsize=16, fontweight='bold', pad=20)
     plt.xlabel('Year', fontsize=12)
     plt.ylabel('Number of Papers', fontsize=12)
@@ -261,9 +269,310 @@ def create_innovation_trends_chart(data, output_dir):
         total = sum(innovation_data[innovation_type])
         total_by_type[innovation_type] = total
     
-    print("Total contributions by type:")
+    print("Total contributions by type (avoiding double counting):")
     for innovation_type, total in total_by_type.items():
         print(f"  {label_mapping[innovation_type]}: {total}")
+
+def create_compound_innovation_chart(data, output_dir):
+    """Create a stacked area chart showing papers with 0, 1, 2, or 3+ innovations over time."""
+    print("Creating compound innovation analysis chart...")
+    
+    # Innovation types to track (combining model and architecture to avoid double counting)
+    innovation_types = [
+        'introduces_new_model_or_architecture',  # Combined category
+        'introduces_new_dataset', 
+        'introduces_new_benchmark'
+    ]
+    
+    # Track compound innovations by year
+    compound_by_year = defaultdict(lambda: defaultdict(int))
+    innovation_lifecycle_data = defaultdict(lambda: defaultdict(int))
+    
+    for paper in data:
+        year = paper.get('year')
+        if year:
+            # Count total innovations per paper (avoiding double counting)
+            innovation_count = 0
+            
+            # Check model/architecture (count as one)
+            if has_model_or_architecture_innovation(paper):
+                innovation_count += 1
+                innovation_lifecycle_data[year]['introduces_new_model_or_architecture'] += 1
+            
+            # Check dataset
+            if paper.get('introduces_new_dataset') == True:
+                innovation_count += 1
+                innovation_lifecycle_data[year]['introduces_new_dataset'] += 1
+                
+            # Check benchmark
+            if paper.get('introduces_new_benchmark') == True:
+                innovation_count += 1
+                innovation_lifecycle_data[year]['introduces_new_benchmark'] += 1
+            
+            # Categorize by innovation count (now max is 3 since we combined model/arch)
+            if innovation_count == 0:
+                compound_by_year[year]['0_innovations'] += 1
+            elif innovation_count == 1:
+                compound_by_year[year]['1_innovation'] += 1
+            elif innovation_count == 2:
+                compound_by_year[year]['2_innovations'] += 1
+            else:  # 3 (all three types)
+                compound_by_year[year]['3_innovations'] += 1
+    
+    # Prepare data for stacked area chart
+    years = sorted(compound_by_year.keys())
+    categories = ['0_innovations', '1_innovation', '2_innovations', '3_innovations']
+    category_labels = ['0 Innovations', '1 Innovation', '2 Innovations', '3 Innovations (All Types)']
+    
+    # Create data arrays for each category
+    category_data = {}
+    for category in categories:
+        category_data[category] = [compound_by_year[year][category] for year in years]
+    
+    # Create stacked area chart
+    plt.figure(figsize=(14, 10))
+    
+    # Create the stacked areas
+    bottom = np.zeros(len(years))
+    colors = ['#E8E8E8', '#A8D8EA', '#AA96DA', '#FCBAD3']  # Light to vibrant progression
+    
+    for i, category in enumerate(categories):
+        label = category_labels[i]
+        plt.fill_between(years, bottom, bottom + category_data[category], 
+                        alpha=0.8, label=label, color=colors[i])
+        bottom += category_data[category]
+    
+    plt.title('Compound Innovation Analysis (Corrected)\nDistribution of Papers by Number of Innovations Over Time\n(Models/Architectures Combined to Avoid Double Counting)', 
+              fontsize=16, fontweight='bold', pad=20)
+    plt.xlabel('Year', fontsize=12)
+    plt.ylabel('Number of Papers', fontsize=12)
+    plt.legend(loc='upper left')
+    plt.grid(True, alpha=0.3)
+    
+    # Ensure every year has a mark on x-axis
+    plt.xticks(years)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'compound_innovations.png'), dpi=300, bbox_inches='tight')
+    plt.show()
+    
+    # Calculate and display insights
+    total_papers_by_year = {}
+    comprehensive_papers_by_year = {}  # 2+ innovations
+    
+    for year in years:
+        total = sum(category_data[category][years.index(year)] for category in categories)
+        comprehensive = (category_data['2_innovations'][years.index(year)] + 
+                        category_data['3_innovations'][years.index(year)])
+        total_papers_by_year[year] = total
+        comprehensive_papers_by_year[year] = comprehensive
+    
+    print("\nCompound Innovation Insights:")
+    print("=" * 50)
+    
+    # Recent trends (last 3 years with data)
+    recent_years = [y for y in years if y >= 2022]
+    if recent_years:
+        recent_comprehensive_pct = []
+        for year in recent_years:
+            if total_papers_by_year[year] > 0:
+                pct = (comprehensive_papers_by_year[year] / total_papers_by_year[year]) * 100
+                recent_comprehensive_pct.append(pct)
+                print(f"{year}: {comprehensive_papers_by_year[year]}/{total_papers_by_year[year]} papers ({pct:.1f}%) with 2+ innovations")
+        
+        if len(recent_comprehensive_pct) > 1:
+            trend = "increasing" if recent_comprehensive_pct[-1] > recent_comprehensive_pct[0] else "decreasing"
+            print(f"\nTrend: Comprehensive contributions are {trend} in recent years")
+    
+    # Overall statistics
+    total_comprehensive = sum(comprehensive_papers_by_year.values())
+    total_all_papers = sum(total_papers_by_year.values())
+    overall_comprehensive_pct = (total_comprehensive / total_all_papers) * 100
+    print(f"\nOverall: {total_comprehensive}/{total_all_papers} papers ({overall_comprehensive_pct:.1f}%) introduce 2+ innovations")
+    
+    # Innovation lifecycle analysis
+    print("\nInnovation Lifecycle Analysis (Corrected):")
+    print("=" * 50)
+    
+    # Calculate peak years for each innovation type
+    lifecycle_peaks = {}
+    for innovation_type in innovation_types:
+        max_year = max(years, key=lambda y: innovation_lifecycle_data[y][innovation_type])
+        max_count = innovation_lifecycle_data[max_year][innovation_type]
+        lifecycle_peaks[innovation_type] = (max_year, max_count)
+    
+    label_mapping = {
+        'introduces_new_model_or_architecture': 'New Models/Architectures',
+        'introduces_new_dataset': 'New Datasets',
+        'introduces_new_benchmark': 'New Benchmarks'
+    }
+    
+    for innovation_type, (peak_year, peak_count) in lifecycle_peaks.items():
+        print(f"{label_mapping[innovation_type]}: Peak in {peak_year} ({peak_count} papers)")
+    
+    print(f"\nNote: Models and Architectures are now combined to avoid double-counting")
+    print(f"since they represent essentially the same type of contribution.")
+    
+    return category_data, years
+
+def analyze_platform_consolidation(data, output_dir):
+    """Analyze platform consolidation vs fragmentation trends."""
+    print("Analyzing platform consolidation trends...")
+    
+    # Track platform diversity metrics by year
+    platform_metrics_by_year = {}
+    
+    for year in range(2016, 2026):  # Cover full timeline
+        year_papers = [paper for paper in data if paper.get('year') == year]
+        if not year_papers:
+            continue
+            
+        # Count unique platforms mentioned
+        all_platforms = set()
+        platform_counts = Counter()
+        
+        for paper in year_papers:
+            platforms = paper.get('platforms', [])  # Note: checking both 'platform' and 'platforms'
+            if not platforms:
+                platforms = paper.get('platform', [])
+            
+            for platform in platforms:
+                all_platforms.add(platform)
+                platform_counts[platform] += 1
+        
+        # Calculate diversity metrics
+        total_platforms = len(all_platforms)
+        total_mentions = sum(platform_counts.values())
+        
+        # Herfindahl-Hirschman Index (HHI) for concentration
+        # HHI = sum of squared market shares (0 = perfect competition, 1 = monopoly)
+        if total_mentions > 0:
+            hhi = sum((count / total_mentions) ** 2 for count in platform_counts.values())
+            # Convert to concentration ratio (higher = more concentrated)
+            concentration = hhi
+        else:
+            concentration = 0
+        
+        # Top 3 platform dominance
+        top3_share = sum(count for _, count in platform_counts.most_common(3)) / max(total_mentions, 1)
+        
+        platform_metrics_by_year[year] = {
+            'unique_platforms': total_platforms,
+            'total_mentions': total_mentions,
+            'concentration_index': concentration,
+            'top3_dominance': top3_share,
+            'platform_counts': platform_counts
+        }
+    
+    # Generate insights
+    years = sorted(platform_metrics_by_year.keys())
+    
+    print("\nPlatform Consolidation Analysis:")
+    print("=" * 50)
+    
+    if len(years) >= 3:
+        early_years = years[:3]
+        recent_years = years[-3:]
+        
+        early_diversity = np.mean([platform_metrics_by_year[y]['unique_platforms'] for y in early_years])
+        recent_diversity = np.mean([platform_metrics_by_year[y]['unique_platforms'] for y in recent_years])
+        
+        early_concentration = np.mean([platform_metrics_by_year[y]['concentration_index'] for y in early_years])
+        recent_concentration = np.mean([platform_metrics_by_year[y]['concentration_index'] for y in recent_years])
+        
+        print(f"Platform Diversity:")
+        print(f"  Early years ({early_years[0]}-{early_years[-1]}): {early_diversity:.1f} avg platforms/year")
+        print(f"  Recent years ({recent_years[0]}-{recent_years[-1]}): {recent_diversity:.1f} avg platforms/year")
+        
+        diversity_trend = "increasing" if recent_diversity > early_diversity else "decreasing"
+        print(f"  Trend: Platform diversity is {diversity_trend}")
+        
+        print(f"\nPlatform Concentration:")
+        print(f"  Early years: {early_concentration:.3f} concentration index")
+        print(f"  Recent years: {recent_concentration:.3f} concentration index")
+        
+        concentration_trend = "increasing" if recent_concentration > early_concentration else "decreasing"
+        print(f"  Trend: Platform concentration is {concentration_trend}")
+        
+        # Identify dominant platforms over time
+        print(f"\nDominant Platforms by Era:")
+        for era, era_years in [("Early", early_years), ("Recent", recent_years)]:
+            era_platform_counts = Counter()
+            for year in era_years:
+                for platform, count in platform_metrics_by_year[year]['platform_counts'].items():
+                    era_platform_counts[platform] += count
+            
+            print(f"  {era} era top platforms: {', '.join([p for p, _ in era_platform_counts.most_common(3)])}")
+    
+    return platform_metrics_by_year
+
+def analyze_acceleration_indicators(data, output_dir):
+    """Analyze acceleration indicators and growth sustainability."""
+    print("Analyzing acceleration and growth sustainability...")
+    
+    # Count papers by year
+    year_counts = Counter()
+    for paper in data:
+        year = paper.get('year')
+        if year:
+            year_counts[year] += 1
+    
+    years = sorted(year_counts.keys())
+    counts = [year_counts[year] for year in years]
+    
+    print("\nAcceleration Analysis:")
+    print("=" * 40)
+    
+    # Calculate year-over-year growth rates
+    growth_rates = []
+    for i in range(1, len(counts)):
+        if counts[i-1] > 0:
+            growth_rate = ((counts[i] - counts[i-1]) / counts[i-1]) * 100
+            growth_rates.append(growth_rate)
+            print(f"{years[i-1]} → {years[i]}: {growth_rate:+.1f}% growth ({counts[i-1]} → {counts[i]} papers)")
+    
+    # Analyze growth pattern
+    if len(growth_rates) >= 3:
+        recent_growth = np.mean(growth_rates[-3:])
+        early_growth = np.mean(growth_rates[:3]) if len(growth_rates) >= 6 else np.mean(growth_rates[:len(growth_rates)//2])
+        
+        print(f"\nGrowth Pattern Analysis:")
+        print(f"  Early period average growth: {early_growth:.1f}%")
+        print(f"  Recent period average growth: {recent_growth:.1f}%")
+        
+        if recent_growth > early_growth * 1.5:
+            trend = "accelerating (exponential-like growth)"
+        elif recent_growth < early_growth * 0.5:
+            trend = "decelerating (approaching saturation?)"
+        else:
+            trend = "steady (linear-like growth)"
+        
+        print(f"  Growth trend: {trend}")
+        
+        # Sustainability analysis
+        print(f"\nSustainability Indicators:")
+        if recent_growth > 50:
+            print("  ⚠️  Very high growth rates may be unsustainable")
+        elif recent_growth > 20:
+            print("  📈 Strong growth, monitor for inflection points")
+        elif recent_growth > 0:
+            print("  📊 Steady growth, appears sustainable")
+        else:
+            print("  📉 Growth has slowed or reversed")
+    
+    # Project next few years based on current trend
+    if len(years) >= 3 and len(counts) >= 3:
+        # Fit polynomial trend
+        z = np.polyfit(years[-5:], counts[-5:], 2)  # Use last 5 years for trend
+        
+        future_years = [2026, 2027, 2028]
+        projections = [int(np.polyval(z, year)) for year in future_years]
+        
+        print(f"\nProjected Growth (based on recent trend):")
+        for year, projection in zip(future_years, projections):
+            print(f"  {year}: ~{projection} papers (projected)")
+    
+    return year_counts, growth_rates
 
 def main():
     """Main analysis function."""
@@ -274,10 +583,10 @@ def main():
     data = load_data('keyword_filtered_enriched_qwen3_8b.json')
     
     print("\n" + "="*60)
-    print("GENERATING TIMELINE ANALYSIS CHARTS")
+    print("GENERATING COMPREHENSIVE TIMELINE ANALYSIS")
     print("="*60)
     
-    # Generate all three charts
+    # Generate all charts
     create_timeline_chart(data, output_dir)
     print()
     
@@ -285,12 +594,25 @@ def main():
     print()
     
     create_innovation_trends_chart(data, output_dir)
+    print()
+    
+    create_compound_innovation_chart(data, output_dir)
+    print()
+    
+    # Additional analyses
+    analyze_platform_consolidation(data, output_dir)
+    print()
+    
+    analyze_acceleration_indicators(data, output_dir)
     
     print("\n" + "="*60)
-    print("Analysis complete! Generated 3 charts in 'timeline_analysis/' directory:")
+    print("Analysis complete! Generated charts and insights:")
     print(f"  1. {os.path.join(output_dir, 'timeline_overall.png')} - Overall research timeline")
     print(f"  2. {os.path.join(output_dir, 'timeline_platforms.png')} - Platform trends over time") 
     print(f"  3. {os.path.join(output_dir, 'timeline_innovations.png')} - Innovation type trends over time")
+    print(f"  4. {os.path.join(output_dir, 'compound_innovations.png')} - Compound innovation analysis")
+    print(f"  5. Platform consolidation analysis (printed above)")
+    print(f"  6. Acceleration and sustainability analysis (printed above)")
     print("="*60)
 
 if __name__ == "__main__":
