@@ -39,6 +39,43 @@ def should_exclude_from_gui_analysis(arxiv_id):
     """Check if paper should be excluded from GUI-specific analysis (but not most cited/foundation)"""
     return arxiv_id in GENERAL_FOUNDATION_MODELS or arxiv_id in NON_GUI_DATASETS
 
+def create_arxiv_badge(arxiv_id):
+    """
+    Create a clickable ArXiv badge that opens the abstract on arxiv.org
+    
+    Args:
+        arxiv_id: ArXiv ID (may include version number)
+        
+    Returns:
+        str: Markdown badge that links to ArXiv abstract
+    """
+    if not arxiv_id:
+        return "N/A"
+    
+    # Clean arxiv_id to remove version numbers for the URL
+    clean_id = arxiv_id.split('v')[0] if 'v' in arxiv_id else arxiv_id
+    
+    # Create badge with link to ArXiv abstract
+    badge_url = f"https://img.shields.io/badge/arXiv-{clean_id}-b31b1b.svg"
+    arxiv_url = f"https://arxiv.org/abs/{clean_id}"
+    
+    return f"[![arXiv]({badge_url})]({arxiv_url})"
+
+def truncate_text(text, max_length=100):
+    """
+    Truncate text to specified length with ellipsis.
+    
+    Args:
+        text: Text to truncate
+        max_length: Maximum length before truncation
+        
+    Returns:
+        str: Truncated text with ellipsis if needed
+    """
+    if not text or len(text) <= max_length:
+        return text
+    return text[:max_length].rsplit(' ', 1)[0] + "..."
+
 def ensure_output_directory():
     """Create output directory if it doesn't exist"""
     if not os.path.exists(OUTPUT_DIR):
@@ -151,6 +188,8 @@ def build_paper_database(papers):
             'platforms': paper.get('platform', []),
             'cited_by': paper.get('cited_by', []),
             'citation_count': len(paper.get('cited_by', [])),
+            'key_contributions': paper.get('key_contributions', ''),
+            'contribution': paper.get('contribution', ''),
         }
     
     if skipped_count > 0:
@@ -253,14 +292,15 @@ def create_influence_ranking_table(paper_db, top_n=20):
             
         data.append({
             'Rank': 0,  # Will be filled below
-            'ArXiv ID': arxiv_id,
+            'ArXiv': create_arxiv_badge(arxiv_id),
             'Title': paper['title'],
             'Year': paper['year'] or 'N/A',
             'Citations': paper['citation_count'],
             'PageRank': paper['pagerank'],
             'Betweenness': paper['betweenness'],
             'Platforms': ', '.join(paper['platforms'][:2]) if paper['platforms'] else 'None',
-            
+            'Summary': truncate_text(paper['key_contributions'], 150),
+            'Contributions': truncate_text(paper['contribution'], 150),
         })
     
     df = pd.DataFrame(data)
@@ -270,7 +310,7 @@ def create_influence_ranking_table(paper_db, top_n=20):
     df_ranked['Rank'] = range(1, len(df_ranked) + 1)
     
     # Format for display
-    display_df = df_ranked[['Rank', 'ArXiv ID', 'Title', 'Year', 'Citations', 'PageRank', 'Betweenness', 'Platforms']].copy()
+    display_df = df_ranked[['Rank', 'ArXiv', 'Title', 'Year', 'Citations', 'PageRank', 'Betweenness', 'Platforms', 'Summary', 'Contributions']].copy()
     display_df['PageRank'] = display_df['PageRank'].round(6)
     display_df['Betweenness'] = display_df['Betweenness'].round(4)
     
@@ -307,7 +347,9 @@ def create_benchmarks_datasets_models_tables(papers):
             'arxiv_id': arxiv_id,
             'title': paper.get('title', ''),
             'year': paper.get('year'),
-            'citations': len(paper.get('cited_by', []))
+            'citations': len(paper.get('cited_by', [])),
+            'key_contributions': paper.get('key_contributions', ''),
+            'contribution': paper.get('contribution', '')
         }
         
         # Categorize based only on introduces_new_* boolean fields
@@ -333,7 +375,6 @@ def create_benchmarks_datasets_models_tables(papers):
         
         # Filter out general foundation models from Models category only
         if category_name == 'Models':
-
             # Filter out general foundation models to focus on GUI agent-specific models
             papers_list = [p for p in papers_list if p['arxiv_id'] not in GENERAL_FOUNDATION_MODELS]
             
@@ -348,10 +389,12 @@ def create_benchmarks_datasets_models_tables(papers):
         for i, paper in enumerate(top_papers, 1):
             data.append({
                 'Rank': i,
-                'ArXiv ID': paper['arxiv_id'],
+                'ArXiv': create_arxiv_badge(paper['arxiv_id']),
                 'Title': paper['title'],
                 'Year': paper['year'] or 'N/A',
-                'Citations': paper['citations']
+                'Citations': paper['citations'],
+                'Summary': truncate_text(paper.get('key_contributions', ''), 150),
+                'Contributions': truncate_text(paper.get('contribution', ''), 150),
             })
         
         df = pd.DataFrame(data)
@@ -457,13 +500,14 @@ def create_most_cited_papers_table(paper_db, top_n=20):
     for paper_id, paper in paper_db.items():
         data.append({
             'Rank': 0,  # Will be filled below
-            'ArXiv ID': paper_id,
+            'ArXiv': create_arxiv_badge(paper_id),
             'Title': paper['title'],
             'Year': paper['year'] or 'N/A',
             'Citations': paper['citation_count'],
             'PageRank': paper['pagerank'],
             'Platforms': ', '.join(paper['platforms'][:2]) if paper['platforms'] else 'None',
-            
+            'Summary': truncate_text(paper['key_contributions'], 150),
+            'Contributions': truncate_text(paper['contribution'], 150),
         })
     
     df = pd.DataFrame(data)
@@ -473,7 +517,7 @@ def create_most_cited_papers_table(paper_db, top_n=20):
     df_ranked['Rank'] = range(1, len(df_ranked) + 1)
     
     # Format for display
-    display_df = df_ranked[['Rank', 'ArXiv ID', 'Title', 'Year', 'Citations', 'PageRank', 'Platforms']].copy()
+    display_df = df_ranked[['Rank', 'ArXiv', 'Title', 'Year', 'Citations', 'PageRank', 'Platforms', 'Summary', 'Contributions']].copy()
     display_df['PageRank'] = display_df['PageRank'].round(6)
     
     # Save as markdown table
@@ -524,7 +568,7 @@ def create_network_bridge_papers_table(paper_db, graph, top_n=20):
             if bridge_score > 0.01:  # Filter for meaningful bridges
                 bridge_data.append({
                     'Rank': 0,  # Will be filled below
-                    'ArXiv ID': arxiv_id,
+                    'ArXiv': create_arxiv_badge(arxiv_id),
                     'Title': paper['title'],
                     'Year': paper['year'] or 'N/A',
                     'Bridge Score': bridge_score,
@@ -532,7 +576,9 @@ def create_network_bridge_papers_table(paper_db, graph, top_n=20):
                     'Betweenness': paper['betweenness'],
                     'Platform Span': platform_diversity,
                     'Year Span': year_diversity,
-                    'Citations': paper['citation_count']
+                    'Citations': paper['citation_count'],
+                    'Summary': truncate_text(paper['key_contributions'], 150),
+                    'Contributions': truncate_text(paper['contribution'], 150),
                 })
     
     # Create and sort bridge papers table
@@ -541,8 +587,8 @@ def create_network_bridge_papers_table(paper_db, graph, top_n=20):
     bridge_df['Rank'] = range(1, len(bridge_df) + 1)
     
     # Format for display
-    display_cols = ['Rank', 'ArXiv ID', 'Title', 'Year', 'Bridge Score', 'PageRank', 'Betweenness', 
-                   'Platform Span', 'Year Span', 'Citations']
+    display_cols = ['Rank', 'ArXiv', 'Title', 'Year', 'Bridge Score', 'PageRank', 'Betweenness', 
+                   'Platform Span', 'Year Span', 'Citations', 'Summary', 'Contributions']
     display_df = bridge_df[display_cols].copy()
     display_df['Bridge Score'] = display_df['Bridge Score'].round(4)
     display_df['PageRank'] = display_df['PageRank'].round(6)
@@ -974,14 +1020,15 @@ def create_foundation_papers_table(paper_db, top_n=20):
         if paper.get('foundation_score', 0) > 0:  # No exclusions for foundation papers
             foundation_data.append({
                 'Rank': 0,  # Will be filled below
-                'ArXiv ID': arxiv_id,
+                'ArXiv': create_arxiv_badge(arxiv_id),
                 'Title': paper['title'],
                 'Year': paper['year'] or 'N/A',
                 'Foundation Score': paper['foundation_score'],
                 'Citations': paper['citation_count'],
                 'Age': max(1, 2025 - (paper['year'] or 2025)),
                 'PageRank': paper['pagerank'],
-                
+                'Summary': truncate_text(paper['key_contributions'], 150),
+                'Contributions': truncate_text(paper['contribution'], 150),
             })
     
     # Create and sort foundation papers table
@@ -990,7 +1037,7 @@ def create_foundation_papers_table(paper_db, top_n=20):
     foundation_df['Rank'] = range(1, len(foundation_df) + 1)
     
     # Format for display
-    display_cols = ['Rank', 'ArXiv ID', 'Title', 'Year', 'Foundation Score', 'Citations', 'Age', 'PageRank']
+    display_cols = ['Rank', 'ArXiv', 'Title', 'Year', 'Foundation Score', 'Citations', 'Age', 'PageRank', 'Summary', 'Contributions']
     display_df = foundation_df[display_cols].copy()
     display_df['Foundation Score'] = display_df['Foundation Score'].round(4)
     display_df['PageRank'] = display_df['PageRank'].round(6)
@@ -1018,7 +1065,7 @@ def create_frontier_papers_table(paper_db, top_n=20):
             age = max(1, 2025 - (paper['year'] or 2025))
             frontier_data.append({
                 'Rank': 0,  # Will be filled below
-                'ArXiv ID': arxiv_id,
+                'ArXiv': create_arxiv_badge(arxiv_id),
                 'Title': paper['title'],
                 'Year': paper['year'] or 'N/A',
                 'Frontier Score': paper['frontier_score'],
@@ -1026,7 +1073,8 @@ def create_frontier_papers_table(paper_db, top_n=20):
                 'Age': age,
                 'Citations/Year': round(paper['citation_count'] / age, 1),
                 'PageRank': paper['pagerank'],
-                
+                'Summary': truncate_text(paper['key_contributions'], 150),
+                'Contributions': truncate_text(paper['contribution'], 150),
             })
     
     # Create and sort frontier papers table
@@ -1035,7 +1083,7 @@ def create_frontier_papers_table(paper_db, top_n=20):
     frontier_df['Rank'] = range(1, len(frontier_df) + 1)
     
     # Format for display
-    display_cols = ['Rank', 'ArXiv ID', 'Title', 'Year', 'Frontier Score', 'Citations', 'Age', 'Citations/Year', 'PageRank']
+    display_cols = ['Rank', 'ArXiv', 'Title', 'Year', 'Frontier Score', 'Citations', 'Age', 'Citations/Year', 'PageRank', 'Summary', 'Contributions']
     display_df = frontier_df[display_cols].copy()
     display_df['Frontier Score'] = display_df['Frontier Score'].round(4)
     display_df['PageRank'] = display_df['PageRank'].round(6)
@@ -1092,7 +1140,7 @@ def create_citation_velocity_table(paper_db, top_n=20):
             
             velocity_data.append({
                 'Rank': 0,  # Will be filled below
-                'ArXiv ID': arxiv_id,
+                'ArXiv': create_arxiv_badge(arxiv_id),
                 'Title': paper['title'],
                 'Year': paper['year'] or 'N/A',
                 'Citations': paper['citation_count'],
@@ -1100,7 +1148,9 @@ def create_citation_velocity_table(paper_db, top_n=20):
                 'Recent (6mo)': recent_citations,
                 'Very Recent (3mo)': very_recent_citations,
                 'Recent Ratio': recent_ratio,
-                'PageRank': paper['pagerank']
+                'PageRank': paper['pagerank'],
+                'Summary': truncate_text(paper['key_contributions'], 150),
+                'Contributions': truncate_text(paper['contribution'], 150),
             })
     
     # Create and sort velocity table by recent activity (most relevant for fast-moving field)
@@ -1109,8 +1159,8 @@ def create_citation_velocity_table(paper_db, top_n=20):
     velocity_df['Rank'] = range(1, len(velocity_df) + 1)
     
     # Format for display
-    display_cols = ['Rank', 'ArXiv ID', 'Title', 'Year', 'Citations', 'Citations/Year', 
-                   'Recent (6mo)', 'Very Recent (3mo)', 'Recent Ratio']
+    display_cols = ['Rank', 'ArXiv', 'Title', 'Year', 'Citations', 'Citations/Year', 
+                   'Recent (6mo)', 'Very Recent (3mo)', 'Recent Ratio', 'Summary', 'Contributions']
     display_df = velocity_df[display_cols].copy()
     display_df['Citations/Year'] = display_df['Citations/Year'].round(2)
     display_df['Recent Ratio'] = display_df['Recent Ratio'].round(3)
@@ -1142,7 +1192,7 @@ def create_future_impact_table(paper_db, top_n=5):
             if impact_signals.get('prediction_confidence') != 'low':
                 impact_data.append({
                     'Rank': 0,  # Will be filled below
-                    'ArXiv ID': arxiv_id,
+                    'ArXiv': create_arxiv_badge(arxiv_id),
                     'Title': paper['title'],
                     'Year': paper_year,
                     'Citations': paper['citation_count'],
@@ -1151,7 +1201,9 @@ def create_future_impact_table(paper_db, top_n=5):
                     'Breakthrough Score': round(impact_signals.get('breakthrough_potential', 0), 3),
                     'Predicted Trajectory': impact_signals.get('predicted_trajectory', 'unknown'),
                     'Confidence': impact_signals.get('prediction_confidence', 'low'),
-                    'PageRank': paper['pagerank']
+                    'PageRank': paper['pagerank'],
+                    'Summary': truncate_text(paper['key_contributions'], 150),
+                    'Contributions': truncate_text(paper['contribution'], 150),
                 })
     
     # Create and sort future impact table
@@ -1162,9 +1214,9 @@ def create_future_impact_table(paper_db, top_n=5):
         impact_df['Rank'] = range(1, len(impact_df) + 1)
         
         # Format for display
-        display_cols = ['Rank', 'ArXiv ID', 'Title', 'Year', 'Citations', 'Early Momentum', 
+        display_cols = ['Rank', 'ArXiv', 'Title', 'Year', 'Citations', 'Early Momentum', 
                        'Growth Ratio', 'Breakthrough Score', 'Predicted Trajectory', 
-                       'Confidence', 'PageRank']
+                       'Confidence', 'PageRank', 'Summary', 'Contributions']
         display_df = impact_df[display_cols].copy()
         display_df['PageRank'] = display_df['PageRank'].round(6)
         
@@ -2241,7 +2293,7 @@ def create_simple_temporal_table(paper_db, top_n=20):
             
             temporal_data.append({
                 'Rank': 0,
-                'ArXiv ID': arxiv_id,
+                'ArXiv': create_arxiv_badge(arxiv_id),
                 'Title': paper['title'],
                 'Year': paper['year'] or 'N/A',
                 'Pattern': profile['pattern'],
@@ -2249,7 +2301,9 @@ def create_simple_temporal_table(paper_db, top_n=20):
                 'Score': profile['score'],
                 'Recent Ratio': profile['recent_ratio'],
                 'Citations/Year': profile['citations_per_year'],
-                'Burst Strength': profile['burst_strength']
+                'Burst Strength': profile['burst_strength'],
+                'Summary': truncate_text(paper['key_contributions'], 150),
+                'Contributions': truncate_text(paper['contribution'], 150),
             })
     
     # Sort and format
@@ -2258,8 +2312,8 @@ def create_simple_temporal_table(paper_db, top_n=20):
     df['Rank'] = range(1, len(df) + 1)
     
     # Clean up display
-    display_df = df[['Rank', 'ArXiv ID', 'Title', 'Year', 'Pattern', 'Citations', 
-                    'Score', 'Recent Ratio', 'Citations/Year', 'Burst Strength']].copy()
+    display_df = df[['Rank', 'ArXiv', 'Title', 'Year', 'Pattern', 'Citations', 
+                    'Score', 'Recent Ratio', 'Citations/Year', 'Burst Strength', 'Summary', 'Contributions']].copy()
     display_df['Score'] = display_df['Score'].round(2)
     display_df['Recent Ratio'] = display_df['Recent Ratio'].round(3)
     display_df['Citations/Year'] = display_df['Citations/Year'].round(1)
@@ -2282,16 +2336,20 @@ def create_paradigm_shift_papers_table(paper_db):
         # Convert to DataFrame
         shift_data = []
         for i, paper in enumerate(paradigm_papers, 1):
+            # Get the paper from database to access key_contributions and contribution
+            paper_db_entry = paper_db.get(paper['paper_id'], {})
             shift_data.append({
                 'Rank': i,
-                'ArXiv ID': paper['paper_id'],
+                'ArXiv': create_arxiv_badge(paper['paper_id']),
                 'Title': paper['title'],
                 'Year': paper['year'],
                 'Total Citations': paper['total_citations'],
                 'Months Before Surge': paper['months_before_surge'],
                 'Post-Surge Citations': paper['post_surge_citations'],
                 'Surge Ratio': round(paper['surge_ratio'], 2),
-                'Field Acceleration': f"{paper['acceleration_triggered']:.1f}%"
+                'Field Acceleration': f"{paper['acceleration_triggered']:.1f}%",
+                'Summary': truncate_text(paper_db_entry.get('key_contributions', ''), 150),
+                'Contributions': truncate_text(paper_db_entry.get('contribution', ''), 150),
             })
         
         shift_df = pd.DataFrame(shift_data)
