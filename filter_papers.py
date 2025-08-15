@@ -52,7 +52,7 @@ class KeywordFilter:
             # Very specific compound terms
             "computer vision for gui", "vision language action", "autonomous gui",
             "desktop automation", "browser automation", "mobile automation",
-            "android gui", "ios interface", "web interface",
+            "android gui", "ios interface", "web interface", "gpt 4 technical report",
             "foundation action model", "embodied interaction", "screen interaction"
         ]
         
@@ -64,7 +64,7 @@ class KeywordFilter:
             "vision language assistant", "visual element recognition",
             "action sequence", "multi-step gui", "gui task", "interface task",
             "automation success rate", "element accuracy", "click accuracy",
-            "gpt 4 technical report", "cogvlm", "webgpt", "ferret", "vision language action models"
+             "cogvlm", "webgpt", "ferret", "vision language action models"
         ]
         
         # Context keywords (strengthen matches) - 0.1 points each, boost medium-precision
