@@ -506,6 +506,201 @@ def analyze_platform_consolidation(data, output_dir):
     
     return platform_metrics_by_year
 
+def create_granular_timeline_chart(data, output_dir):
+    """Create a granular timeline analysis with time period buckets."""
+    print("Creating granular timeline analysis with time period buckets...")
+    
+    def get_quarter(month):
+        """Convert month to quarter."""
+        if month <= 3:
+            return "Q1"
+        elif month <= 6:
+            return "Q2"
+        elif month <= 9:
+            return "Q3"
+        else:
+            return "Q4"
+    
+    def get_time_period(year, month):
+        """Get time period bucket for a paper."""
+        if year <= 2021:
+            return "2016-2021 Early Era"
+        elif year == 2022:
+            return "2022 Growth Year"
+        elif year >= 2023:
+            quarter = get_quarter(month) if month else "Unknown Q"
+            return f"{year} {quarter}"
+        else:
+            return f"{year}"
+    
+    # Count papers by time period buckets
+    period_counts = Counter()
+    quarterly_data = defaultdict(int)  # For detailed quarterly analysis
+    
+    for paper in data:
+        year = paper.get('year')
+        month = paper.get('month')
+        
+        if year:
+            period = get_time_period(year, month)
+            period_counts[period] += 1
+            
+            # Track quarterly data separately for detailed analysis
+            if year >= 2023:
+                quarter_key = f"{year}_{get_quarter(month) if month else 'Unknown'}"
+                quarterly_data[quarter_key] += 1
+    
+    # Organize periods for plotting
+    periods = []
+    counts = []
+    colors = []
+    
+    # Add early era
+    if "2016-2021 Early Era" in period_counts:
+        periods.append("2016-2021\nEarly Era")
+        counts.append(period_counts["2016-2021 Early Era"])
+        colors.append('#8E9AAF')  # Muted blue-gray
+    
+    # Add growth year
+    if "2022 Growth Year" in period_counts:
+        periods.append("2022\nGrowth Year")
+        counts.append(period_counts["2022 Growth Year"])
+        colors.append('#CB997E')  # Warm brown
+    
+    # Add quarterly data for 2023+
+    years_with_quarters = {}
+    for period in period_counts.keys():
+        if period.startswith(('2023', '2024', '2025')):
+            year = int(period.split()[0])
+            quarter = period.split()[1] if len(period.split()) > 1 else 'Unknown'
+            
+            if year not in years_with_quarters:
+                years_with_quarters[year] = {}
+            years_with_quarters[year][quarter] = period_counts[period]
+    
+    # Add quarterly periods in chronological order
+    quarter_colors = {'Q1': '#FFD23F', 'Q2': '#FF6B35', 'Q3': '#EE964B', 'Q4': '#F95738'}
+    
+    for year in sorted(years_with_quarters.keys()):
+        for quarter in ['Q1', 'Q2', 'Q3', 'Q4']:
+            if quarter in years_with_quarters[year]:
+                periods.append(f"{year}\n{quarter}")
+                counts.append(years_with_quarters[year][quarter])
+                colors.append(quarter_colors[quarter])
+    
+    # Create the chart
+    plt.figure(figsize=(16, 10))
+    
+    bars = plt.bar(range(len(periods)), counts, color=colors, alpha=0.8, edgecolor='black', linewidth=0.5)
+    
+    # Add value labels on bars
+    for i, (bar, count) in enumerate(zip(bars, counts)):
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + 0.5,
+                f'{count}', ha='center', va='bottom', fontweight='bold', fontsize=10)
+    
+    plt.title('GUI Agent Research: Granular Timeline Analysis\n(Time Period Buckets)', 
+              fontsize=16, fontweight='bold', pad=20)
+    plt.xlabel('Time Period', fontsize=12)
+    plt.ylabel('Number of Papers', fontsize=12)
+    plt.xticks(range(len(periods)), periods, rotation=45, ha='right')
+    plt.grid(True, alpha=0.3, axis='y')
+    
+    # Add legend for quarterly colors
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor='#8E9AAF', label='Early Era (2016-2021)'),
+        Patch(facecolor='#CB997E', label='Growth Year (2022)'),
+        Patch(facecolor='#FFD23F', label='Q1 (Jan-Mar)'),
+        Patch(facecolor='#FF6B35', label='Q2 (Apr-Jun)'),
+        Patch(facecolor='#EE964B', label='Q3 (Jul-Sep)'),
+        Patch(facecolor='#F95738', label='Q4 (Oct-Dec)')
+    ]
+    plt.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.02, 1))
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'granular_timeline.png'), dpi=300, bbox_inches='tight')
+    plt.show()
+    
+    # Generate detailed insights
+    print("\nGranular Timeline Analysis:")
+    print("=" * 50)
+    
+    # Early era analysis
+    early_era_count = period_counts.get("2016-2021 Early Era", 0)
+    early_era_years = 6  # 2016-2021
+    early_era_avg = early_era_count / early_era_years
+    
+    print(f"Early Era (2016-2021):")
+    print(f"  Total papers: {early_era_count}")
+    print(f"  Average per year: {early_era_avg:.1f}")
+    
+    # Growth year analysis
+    growth_year_count = period_counts.get("2022 Growth Year", 0)
+    if growth_year_count > 0:
+        growth_vs_early = (growth_year_count / early_era_avg - 1) * 100 if early_era_avg > 0 else 0
+        print(f"\n2022 Growth Year:")
+        print(f"  Total papers: {growth_year_count}")
+        print(f"  Growth vs early era average: {growth_vs_early:+.1f}%")
+    
+    # Quarterly analysis for recent years
+    print(f"\nQuarterly Analysis (2023+):")
+    
+    for year in sorted(years_with_quarters.keys()):
+        year_total = sum(years_with_quarters[year].values())
+        print(f"\n{year} (Total: {year_total} papers):")
+        
+        quarters_data = years_with_quarters[year]
+        for quarter in ['Q1', 'Q2', 'Q3', 'Q4']:
+            if quarter in quarters_data:
+                count = quarters_data[quarter]
+                pct = (count / year_total) * 100 if year_total > 0 else 0
+                print(f"    {quarter}: {count} papers ({pct:.1f}%)")
+        
+        # Calculate quarterly growth if we have previous year
+        if year > 2023:
+            prev_year = year - 1
+            if prev_year in years_with_quarters:
+                prev_total = sum(years_with_quarters[prev_year].values())
+                yoy_growth = ((year_total - prev_total) / prev_total) * 100 if prev_total > 0 else 0
+                print(f"    Year-over-year growth: {yoy_growth:+.1f}%")
+    
+    # Research velocity analysis
+    print(f"\nResearch Velocity Analysis:")
+    print("=" * 30)
+    
+    # Calculate papers per quarter for recent years
+    recent_quarters = []
+    for year in sorted(years_with_quarters.keys()):
+        for quarter in ['Q1', 'Q2', 'Q3', 'Q4']:
+            if quarter in years_with_quarters[year]:
+                recent_quarters.append(years_with_quarters[year][quarter])
+    
+    if len(recent_quarters) >= 4:
+        avg_quarterly = np.mean(recent_quarters)
+        annualized_rate = avg_quarterly * 4
+        
+        print(f"Recent quarterly average: {avg_quarterly:.1f} papers/quarter")
+        print(f"Annualized rate (recent): ~{annualized_rate:.0f} papers/year")
+        print(f"Acceleration vs early era: {(annualized_rate / early_era_avg - 1) * 100:+.1f}%")
+        
+        # Quarterly momentum
+        if len(recent_quarters) >= 6:
+            recent_momentum = np.mean(recent_quarters[-3:])  # Last 3 quarters
+            earlier_momentum = np.mean(recent_quarters[-6:-3])  # Previous 3 quarters
+            momentum_change = (recent_momentum / earlier_momentum - 1) * 100 if earlier_momentum > 0 else 0
+            
+            print(f"Quarterly momentum change: {momentum_change:+.1f}%")
+            
+            if momentum_change > 20:
+                print("  📈 Strong acceleration in recent quarters")
+            elif momentum_change > 0:
+                print("  📊 Positive momentum maintained")
+            else:
+                print("  📉 Momentum has slowed in recent quarters")
+    
+    return period_counts, quarterly_data
+
 def analyze_acceleration_indicators(data, output_dir):
     """Analyze acceleration indicators and growth sustainability."""
     print("Analyzing acceleration and growth sustainability...")
@@ -599,6 +794,10 @@ def main():
     create_compound_innovation_chart(data, output_dir)
     print()
     
+    # Granular timeline analysis
+    create_granular_timeline_chart(data, output_dir)
+    print()
+    
     # Additional analyses
     analyze_platform_consolidation(data, output_dir)
     print()
@@ -611,8 +810,9 @@ def main():
     print(f"  2. {os.path.join(output_dir, 'timeline_platforms.png')} - Platform trends over time") 
     print(f"  3. {os.path.join(output_dir, 'timeline_innovations.png')} - Innovation type trends over time")
     print(f"  4. {os.path.join(output_dir, 'compound_innovations.png')} - Compound innovation analysis")
-    print(f"  5. Platform consolidation analysis (printed above)")
-    print(f"  6. Acceleration and sustainability analysis (printed above)")
+    print(f"  5. {os.path.join(output_dir, 'granular_timeline.png')} - Granular timeline with time period buckets")
+    print(f"  6. Platform consolidation analysis (printed above)")
+    print(f"  7. Acceleration and sustainability analysis (printed above)")
     print("="*60)
 
 if __name__ == "__main__":
