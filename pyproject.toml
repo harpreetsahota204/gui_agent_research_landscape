@@ -61,3 +61,8 @@ include = ["src*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "*.yaml", "*.yml", "*.toml", "*.txt", "*.md"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.9",
+]
