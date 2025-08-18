@@ -8,7 +8,6 @@ version = "0.1.0"
 description = "Research landscape analysis tool for GUI agents, visual agents, and computer-using agents"
 readme = "README.md"
 requires-python = ">=3.8"
-license = { text = "MIT" }
 authors = [
     { name = "GUI Agent Research Team" }
 ]
@@ -62,69 +61,3 @@ include = ["src*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "*.yaml", "*.yml", "*.toml", "*.txt", "*.md"]
-
-# Black configuration
-[tool.black]
-line-length = 88
-target-version = ['py38']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
-
-# isort configuration  
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 88
-known_first_party = ["src"]
-
-# MyPy configuration
-[tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_equality = true
-
-[[tool.mypy.overrides]]
-module = [
-    "networkx.*",
-    "matplotlib.*",
-    "seaborn.*",
-    "bs4.*",
-    "torch.*",
-    "transformers.*"
-]
-ignore_missing_imports = true
-
-# Pytest configuration
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
-addopts = "-v --tb=short"
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
-    "gpu: marks tests that require GPU",
-]
