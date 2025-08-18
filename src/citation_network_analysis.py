@@ -1,12 +1,12 @@
 import json
-import pandas as pd
-import numpy as np
-import networkx as nx
-import matplotlib.pyplot as plt
-from collections import defaultdict, Counter
-import os
 import math
-from datetime import datetime
+import os
+from collections import defaultdict
+
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import pandas as pd
 
 # Output directory for all analysis results
 OUTPUT_DIR = "citation_analysis"

@@ -1,10 +1,12 @@
+import argparse
+import gc
 import json
 import os
-import gc
-import argparse
 from datetime import datetime
-from transformers import AutoModelForCausalLM, AutoTokenizer
+
 import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
 
 class Logger:
     """Simple logger that writes to both terminal and file."""

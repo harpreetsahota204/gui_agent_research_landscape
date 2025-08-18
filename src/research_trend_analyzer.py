@@ -1,13 +1,14 @@
+import argparse
+import gc
 import json
 import os
-import gc
-import argparse
 import threading
-from datetime import datetime
-from collections import defaultdict
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
 import time
+from datetime import datetime
+
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
 
 class Logger:
     """Thread-safe logger that writes to both terminal and file."""

@@ -1,17 +1,17 @@
-import json
-import requests
-import time
-import re
 import argparse
-import os
-from datetime import datetime
+import json
 import logging
-from bs4 import BeautifulSoup
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, List, Optional, Tuple, Set
+import os
+import re
+import time
 import unicodedata
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from difflib import SequenceMatcher
+from typing import Dict, List, Optional, Tuple
+
+import requests
+from bs4 import BeautifulSoup
 
 # Configure logging with better formatting
 logging.basicConfig(
