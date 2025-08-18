@@ -11,13 +11,12 @@ All charts use absolute counts and include data from 2016-2025.
 """
 
 import json
-import matplotlib.pyplot as plt
-import pandas as pd
-from collections import defaultdict, Counter
-import seaborn as sns
-import numpy as np
-from datetime import datetime
 import os
+from collections import Counter, defaultdict
+
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
 
 # Set style for beautiful charts
 plt.style.use('seaborn-v0_8')

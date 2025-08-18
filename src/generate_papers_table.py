@@ -7,6 +7,7 @@ import json
 import re
 from collections import defaultdict
 
+
 def get_quarter(month):
     """Convert month to quarter."""
     if not month:

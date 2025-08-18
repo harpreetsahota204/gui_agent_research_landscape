@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gui-agent-research-landscape"
+version = "0.1.0"
+description = "Research landscape analysis tool for GUI agents, visual agents, and computer-using agents"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    { name = "GUI Agent Research Team" }
+]
+keywords = ["gui-agents", "visual-agents", "computer-agents", "research-analysis", "citations"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Topic :: Text Processing :: Linguistic",
+]
+
+dependencies = [
+    "pandas>=1.3.0",
+    "numpy>=1.21.0",
+    "requests>=2.25.0",
+    "beautifulsoup4>=4.9.0",
+    "matplotlib>=3.5.0",
+    "seaborn>=0.11.0",
+    "networkx>=2.6.0",
+    "torch>=1.9.0",
+    "transformers>=4.20.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/harpreetsahota204/gui_agent_research_landscape"
+Repository = "https://github.com/harpreetsahota204/gui_agent_research_landscape"
+Documentation = "https://github.com/harpreetsahota204/gui_agent_research_landscape#readme"
+Issues = "https://github.com/harpreetsahota204/gui_agent_research_landscape/issues"
+
+[project.scripts]
+gui-research-extract = "src.data_extractor:main"
+gui-research-filter = "src.filter_papers:main"
+gui-research-filter-llm = "src.filter_papers_llm:main"
+gui-research-analyze = "src.paper_analyzer:main"
+gui-research-trends = "src.research_trend_analyzer:main"
+gui-research-timeline = "src.research_timeline_analysis:main"
+gui-research-citations = "src.citation_network_analysis:main"
+gui-research-table = "src.generate_papers_table:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.yaml", "*.yml", "*.toml", "*.txt", "*.md"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.9",
+]

@@ -1,9 +1,10 @@
+import argparse
 import json
-import sys
 import os
 import re
-import argparse
+import sys
 from datetime import datetime
+
 
 class Logger:
     """Simple logger that writes to both terminal and file."""
