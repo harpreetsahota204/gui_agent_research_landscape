@@ -524,7 +524,7 @@
         "Platform": "Web",
         "Date": "April 2026",
         "Paper_Url": "https://arxiv.org/abs/2604.08523",
-        "Highlight": "Evaluates browser agents on 153 write-heavy tasks across 144 live websites, with final-request interception and five-layer trajectories for safe, traceable evaluation.",
+        "Highlight": "Evaluates browser agents on 283 V1+V2 tasks across 163 live websites, with submission interception, five-layer trajectories, and judge-based outcome evaluation.",
         "Code_Url": "https://github.com/reacher-z/ClawBench"
     }
 ]
